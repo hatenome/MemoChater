@@ -15,7 +15,8 @@ const assistantId = computed(() => route.params.assistantId as string)
 
 // 获取当前助手名称
 const currentAssistantName = computed(() => {
-  const assistant = assistantStore.assistants.find(a => a.id === assistantId.value)
+  const list = assistantStore.assistants || []
+  const assistant = Array.isArray(list) ? list.find(a => a.id === assistantId.value) : null
   return assistant?.name || '未知助手'
 })
 

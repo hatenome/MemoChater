@@ -5,7 +5,7 @@ import { api } from '@/api/client'
 
 const app = useAppStore()
 
-const apiBase = ref('http://localhost:7892')
+const apiBase = ref('http://localhost:7894')
 const theme = ref('dark')
 const disableGeminiThinking = ref(false)
 const isLoading = ref(false)
@@ -13,7 +13,7 @@ const isLoading = ref(false)
 // 加载设置
 async function loadSettings() {
   // 从 localStorage 加载
-  apiBase.value = localStorage.getItem('memochater_api_base') || 'http://localhost:7892'
+  apiBase.value = localStorage.getItem('memochater_api_base') || 'http://localhost:7894'
   theme.value = localStorage.getItem('memochater_theme') || 'dark'
   
   // 从后端加载 Gemini 设置
@@ -62,7 +62,7 @@ onMounted(() => {
           <input
             v-model="apiBase"
             class="w-full px-4 py-2 bg-dark-900 border border-dark-600 rounded-lg focus:outline-none focus:border-primary-500"
-            placeholder="http://localhost:7892"
+            placeholder="http://localhost:7894"
           />
           <p class="text-xs text-dark-500 mt-1">MemoChater 后端服务地址</p>
         </div>

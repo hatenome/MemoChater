@@ -15,12 +15,14 @@ const editingTopicTitle = ref('')
 const editInputRef = ref<HTMLInputElement | null>(null)
 
 // 计算属性：分离普通话题和记忆话题
-const normalTopics = computed(() => 
-  store.topics.filter(t => t.topic_type === 'normal' || !t.topic_type)
-)
-const memoryTopics = computed(() => 
-  store.topics.filter(t => t.topic_type === 'memory')
-)
+const normalTopics = computed(() => {
+  const list = store.topics || []
+  return Array.isArray(list) ? list.filter(t => t.topic_type === 'normal' || !t.topic_type) : []
+})
+const memoryTopics = computed(() => {
+  const list = store.topics || []
+  return Array.isArray(list) ? list.filter(t => t.topic_type === 'memory') : []
+})
 
 onMounted(() => {
   store.loadAssistants()
