@@ -1,0 +1,104 @@
+{
+  "assistant_id": "ast_19b74663c7f_9904",
+  "topic_id": "topic_19b800f9976_6121",
+  "user_id": null,
+  "user_name": "司",
+  "assistant_name": "艾拉",
+  "messages": [
+    {
+      "role": "system",
+      "content": "你是艾拉，司的人工智能助手。"
+    },
+    {
+      "role": "user",
+      "content": "你好，我是水市 司，请多指教"
+    },
+    {
+      "role": "assistant",
+      "content": "\n\n👋 您好，水市 司！很高兴见到您。\n\n---\n\n### 🤝 自我介绍\n\n我是 **Gemini Enterprise**，您的智能助手。能够为您提供服务是我的荣幸。无论是在工作、学习还是日常生活中，我都会竭尽全力为您提供高效、精准的帮助。\n\n---\n\n### 🛠️ 我能为您做什么？\n\n为了让您更好地了解我的能力，以下是我可以为您提供支持的一些主要领域：\n\n| 领域 | 描述 |\n|---|---|\n| **信息查询** | 实时搜索网络信息，为您提供最新的新闻、技术文档或百科知识。 |\n| **办公辅助** | 撰写邮件、起草报告、总结长文本，以及协助您安排日程。 |\n| **创意协作** | 编写代码、翻译多国语言、创作文案，甚至是生成图像和视频。 |\n| **问题解决** | 进行复杂的数据分析、数学计算，或为您提供专业的技术建议。 |\n\n---\n\n请问今天有什么我可以帮您的吗？或者您想先聊聊关于哪个方面的话题？我很期待与您的交流！"
+    },
+    {
+      "role": "user",
+      "content": "你好，我是水市 司，请多指教"
+    },
+    {
+      "role": "assistant",
+      "content": "您好，司。\n\n我是艾拉，您的人工智能助手。很高兴为您服务！\n\n请问有什么我可以帮您的吗？"
+    }
+  ],
+  "thinking_pool": [],
+  "short_term_memory": [],
+  "current_states": {},
+  "history_states": [
+    {
+      "ShortTermInjector": {
+        "message": "占位处理器，未实际注入记忆",
+        "status": "placeholder"
+      },
+      "MemoryExtractor": {
+        "extracted": [],
+        "message": "占位处理器，未实际提取记忆",
+        "status": "placeholder"
+      },
+      "MemoryCommitter": {
+        "committed_count": 0,
+        "message": "占位处理器，未实际提交记忆",
+        "status": "placeholder"
+      },
+      "LongTermRetriever": {
+        "message": "占位处理器，未实际执行检索",
+        "query": "你好，我是水市 司，请多指教",
+        "status": "placeholder"
+      },
+      "ResponseAnalyzer": {
+        "ai_response_length": 124,
+        "message": "占位处理器，未实际分析响应",
+        "status": "placeholder"
+      },
+      "ContextAssembler": {
+        "has_system_prompt": true,
+        "main_model": "glm-4.7",
+        "message_count": 4,
+        "status": "success"
+      }
+    },
+    {
+      "ResponseAnalyzer": {
+        "ai_response_length": 1025,
+        "message": "占位处理器，未实际分析响应",
+        "status": "placeholder"
+      },
+      "LongTermRetriever": {
+        "message": "占位处理器，未实际执行检索",
+        "query": "你好，我是水市 司，请多指教",
+        "status": "placeholder"
+      },
+      "ShortTermInjector": {
+        "message": "占位处理器，未实际注入记忆",
+        "status": "placeholder"
+      },
+      "MemoryCommitter": {
+        "committed_count": 0,
+        "message": "占位处理器，未实际提交记忆",
+        "status": "placeholder"
+      },
+      "ContextAssembler": {
+        "has_system_prompt": true,
+        "main_model": "gemini-3-flash-preview",
+        "message_count": 2,
+        "status": "success"
+      },
+      "MemoryExtractor": {
+        "extracted": [],
+        "message": "占位处理器，未实际提取记忆",
+        "status": "placeholder"
+      }
+    }
+  ],
+  "last_processor": null,
+  "user_input": "",
+  "ai_response": null,
+  "main_model": "glm-4.7",
+  "processor_model": "glm-4.7",
+  "embedding_model": "qwen3-embedding:latest"
+}

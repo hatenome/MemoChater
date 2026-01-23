@@ -1,0 +1,37 @@
+# MemoChater 全局配置文件
+
+# 服务监听地址
+listen_addr = "0.0.0.0:7892"
+
+# 数据存储目录（助手、话题、记忆都存储在此目录下）
+data_dir = "./data"
+
+[ai]
+# OpenAI 兼容 API 地址
+# api_base = "http://localhost:3000/v1"
+api_base = "http://localhost:6005/v1"
+
+# API Key（直接填写，或使用环境变量 OPENAI_API_KEY）
+# api_key = "sk-uJczpJhaSQxfzgkmLuf3AsSZjHAWtBLYs5D7DhY6JHWEZQBE"
+api_key = "123"
+
+[qdrant]
+# 是否启用内嵌 Qdrant（true=自动启动，false=连接外部实例）
+embedded = true
+
+# Qdrant 可执行文件路径（相对于程序目录或绝对路径）
+exe_path = "../qdrant-x86_64-pc-windows-msvc/qdrant.exe"
+
+# Qdrant 数据存储目录
+storage_path = "../qdrant-x86_64-pc-windows-msvc/storage"
+
+# Qdrant 监听端口
+port = 6333
+
+# 外部 Qdrant URL（仅当 embedded=false 时使用）
+external_url = "http://127.0.0.1:6333"
+
+# ============================================================
+# 注意：模型配置、角色名称、系统提示词等已移至助手配置
+# 每个助手的配置存储在: data/assistants/{assistant_id}/config.toml
+# ============================================================

@@ -1,0 +1,15 @@
+# ShortTermAssembler 短期记忆组装器配置
+
+# 使用的模型（留空则使用助手配置的 processor_model）
+model = ""
+
+# 用户消息模板
+# 可用变量: {user_name}, {memories}
+user_message_template = """【系统消息-短期记忆】现在为你注入短期记忆，你现在正在与{user_name}进行交谈
+---短期记忆---
+{memories}
+---短期记忆结束---
+"""
+
+# 助手确认消息
+assistant_confirm_message = "已成功回忆"

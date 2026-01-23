@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MemoChater - 记忆管理</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            border-bottom: 1px solid #333;
+            margin-bottom: 20px;
+        }
+        h1 { color: #7c3aed; font-size: 1.8em; }
+        .stats {
+            display: flex;
+            gap: 20px;
+            font-size: 0.9em;
+            color: #888;
+        }
+        .stats span { color: #7c3aed; font-weight: bold; }
+        
+        /* 搜索区 */
+        .search-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .search-bar input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid #333;
+            border-radius: 8px;
+            background: #16213e;
+            color: #eee;
+            font-size: 1em;
+        }
+        .search-bar input:focus { outline: none; border-color: #7c3aed; }
+        .search-bar select {
+            padding: 12px 16px;
+            border: 1px solid #333;
+            border-radius: 8px;
+            background: #16213e;
+            color: #eee;
+            cursor: pointer;
+        }
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.2s;
+        }
+        .btn-primary { background: #7c3aed; color: white; }
+        .btn-primary:hover { background: #6d28d9; }
+        .btn-danger { background: #dc2626; color: white; }
+        .btn-danger:hover { background: #b91c1c; }
+        .btn-secondary { background: #333; color: #eee; }
+        .btn-secondary:hover { background: #444; }
+        
+        /* 记忆列表 */
+        .memory-list { display: flex; flex-direction: column; gap: 12px; }
+        .memory-card {
+            background: #16213e;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 16px;
+            transition: all 0.2s;
+        }
+        .memory-card:hover { border-color: #7c3aed; }
+        .memory-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+        .memory-meta {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .category {
+            background: #7c3aed33;
+            color: #a78bfa;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.8em;
+        }
+        .importance {
+            font-size: 0.8em;
+            color: #888;
+        }
+        .importance.high { color: #f59e0b; }
+        .importance.medium { color: #10b981; }
+        .importance.low { color: #6b7280; }
+        .score {
+            font-size: 0.75em;
+            color: #666;
+            background: #333;
+            padding: 2px 8px;
+            border-radius: 8px;
+        }
+        .memory-content {
+            color: #ddd;
+            line-height: 1.6;
+            margin-bottom: 10px;
+            white-space: pre-wrap;
+        }
+        .memory-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8em;
+            color: #666;
+        }
+        .tags { display: flex; gap: 6px; flex-wrap: wrap; }
+        .tag {
+            background: #333;
+            padding: 2px 8px;
+            border-radius: 8px;
+            font-size: 0.85em;
+        }
+        .actions { display: flex; gap: 8px; }
+        .actions button {
+            padding: 6px 12px;
+            font-size: 0.85em;
+            border-radius: 6px;
+        }
+        
+        /* 模态框 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: #1a1a2e;
+            border: 1px solid #333;
+            border-radius: 16px;
+            padding: 24px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .modal-header h2 { font-size: 1.3em; }
+        .close-btn {
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 1.5em;
+            cursor: pointer;
+        }
+        .close-btn:hover { color: #eee; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            color: #aaa;
+            font-size: 0.9em;
+        }
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #333;
+            border-radius: 8px;
+            background: #16213e;
+            color: #eee;
+            font-size: 1em;
+        }
+        .form-group textarea { min-height: 120px; resize: vertical; }
+        .form-group input:focus,
+        .form-group textarea:focus { outline: none; border-color: #7c3aed; }
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+        
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+        .empty-state svg { width: 80px; height: 80px; margin-bottom: 20px; opacity: 0.5; }
+        
+        /* 加载状态 */
+        .loading { text-align: center; padding: 40px; color: #888; }
+        
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            border-radius: 8px;
+            color: white;
+            font-size: 0.9em;
+            z-index: 2000;
+            animation: slideIn 0.3s ease;
+        }
+        .toast.success { background: #10b981; }
+        .toast.error { background: #dc2626; }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🧠 MemoChater 记忆管理</h1>
+            <div class="stats">
+                <div>记忆总数: <span id="totalCount">-</span></div>
+                <div style="margin-left: 20px; padding-left: 20px; border-left: 1px solid #444;">
+                    待处理: <span id="pendingCount" style="color: #f59e0b;">-</span>
+                    <button class="btn btn-secondary" style="padding: 4px 12px; margin-left: 8px; font-size: 0.85em;" onclick="openPendingModal()">📋 管理</button>
+                </div>
+            </div>
+        </header>
+        
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="搜索记忆内容（语义搜索）...">
+            <select id="categoryFilter">
+                <option value="">全部分类</option>
+                <option value="fact">事实</option>
+                <option value="preference">偏好</option>
+                <option value="event">事件</option>
+                <option value="knowledge">知识</option>
+                <option value="extracted">提取</option>
+            </select>
+            <button class="btn btn-secondary" onclick="loadMemories()">搜索</button>
+            <button class="btn btn-primary" onclick="openCreateModal()">+ 新建记忆</button>
+            <button class="btn btn-primary" style="background:#10b981" onclick="openExtractModal()">🔄 记忆转化</button>
+        </div>
+        
+        <div id="memoryList" class="memory-list">
+            <div class="loading">加载中...</div>
+        </div>
+    </div>
+    
+    <!-- 待处理池管理模态框 -->
+    <div id="pendingModal" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h2>📋 待处理池管理</h2>
+                <button class="close-btn" onclick="closePendingModal()">&times;</button>
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding: 12px; background: #16213e; border-radius: 8px;">
+                <div>
+                    <span style="color: #888;">待处理记忆数量:</span>
+                    <span id="pendingModalCount" style="font-size: 1.5em; color: #f59e0b; margin-left: 8px;">-</span>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn btn-primary" style="background: #10b981;" onclick="processAllPending()">✅ 全部处理</button>
+                    <button class="btn btn-danger" onclick="clearAllPending()">🗑️ 全部清空</button>
+                    <button class="btn btn-secondary" onclick="refreshPendingStatus()">🔄 刷新</button>
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 12px; color: #888; font-size: 0.9em;">
+                预览（最多显示10条）:
+            </div>
+            
+            <div id="pendingPreviewList" style="max-height: 400px; overflow-y: auto;">
+                <div style="color: #666; text-align: center; padding: 40px;">加载中...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 记忆转化模态框 -->
+    <div id="extractModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2>🔄 记忆转化</h2>
+                <button class="close-btn" onclick="closeExtractModal()">&times;</button>
+            </div>
+            <div class="form-group">
+                <label>对话历史 (JSON格式)</label>
+                <textarea id="extractMessages" style="min-height: 200px; font-family: monospace; font-size: 0.9em;" placeholder='[
+  {"role": "user", "content": "你好，我叫秦"},
+  {"role": "assistant", "content": "你好秦！很高兴认识你。"},
+  {"role": "user", "content": "我是一名Rust程序员"}
+]'></textarea>
+            </div>
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="autoStore" style="width: auto;">
+                    自动存储提取的记忆
+                </label>
+            </div>
+            <div class="form-actions" style="justify-content: space-between;">
+                <button type="button" class="btn btn-secondary" onclick="closeExtractModal()">取消</button>
+                <button type="button" class="btn btn-primary" style="background:#10b981" onclick="triggerExtraction()">开始转化</button>
+            </div>
+            
+            <!-- 转化结果区域 -->
+            <div id="extractResult" style="display: none; margin-top: 20px; padding-top: 20px; border-top: 1px solid #333;">
+                <h3 style="margin-bottom: 12px; color: #10b981;">📝 转化结果</h3>
+                <div id="extractedList" style="background: #16213e; border-radius: 8px; padding: 16px; max-height: 300px; overflow-y: auto;"></div>
+                <div id="extractRaw" style="margin-top: 12px;">
+                    <details>
+                        <summary style="cursor: pointer; color: #888; font-size: 0.9em;">查看原始响应</summary>
+                        <pre id="rawResponse" style="background: #0d1117; padding: 12px; border-radius: 8px; font-size: 0.8em; overflow-x: auto; margin-top: 8px;"></pre>
+                    </details>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 创建/编辑模态框 -->
+    <div id="createModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">新建记忆</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="memoryForm" onsubmit="saveMemory(event)">
+                <input type="hidden" id="editId">
+                <div class="form-group">
+                    <label>内容 *</label>
+                    <textarea id="content" required placeholder="输入记忆内容..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>分类 *</label>
+                    <select id="category" required>
+                        <option value="fact">事实 (fact)</option>
+                        <option value="preference">偏好 (preference)</option>
+                        <option value="event">事件 (event)</option>
+                        <option value="knowledge">知识 (knowledge)</option>
+                        <option value="other">其他 (other)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>重要性 (0.0 - 1.0)</label>
+                    <input type="number" id="importance" min="0" max="1" step="0.1" value="0.5">
+                </div>
+                <div class="form-group">
+                    <label>标签 (逗号分隔)</label>
+                    <input type="text" id="tags" placeholder="标签1, 标签2, ...">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/admin/api';
+        
+        // 加载记忆列表
+        async function loadMemories() {
+            const query = document.getElementById('searchInput').value;
+            const category = document.getElementById('categoryFilter').value;
+            
+            const params = new URLSearchParams();
+            if (query) params.set('query', query);
+            if (category) params.set('category', category);
+            params.set('limit', '100');
+            
+            const listEl = document.getElementById('memoryList');
+            listEl.innerHTML = '<div class="loading">搜索中...</div>';
+            
+            try {
+                const res = await fetch(`${API_BASE}/memories?${params}`);
+                const data = await res.json();
+                
+                if (!data.success) {
+                    throw new Error(data.error || '加载失败');
+                }
+                
+                const { memories, total } = data.data;
+                document.getElementById('totalCount').textContent = total;
+                
+                if (memories.length === 0) {
+                    listEl.innerHTML = `
+                        <div class="empty-state">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="M12 6v6l4 2"/>
+                            </svg>
+                            <p>暂无记忆</p>
+                            <p style="margin-top:10px;font-size:0.9em">点击"新建记忆"添加第一条记忆</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                listEl.innerHTML = memories.map(item => renderMemoryCard(item)).join('');
+            } catch (e) {
+                listEl.innerHTML = `<div class="empty-state"><p>加载失败: ${e.message}</p></div>`;
+                showToast(e.message, 'error');
+            }
+        }
+        
+        // 渲染记忆卡片
+        function renderMemoryCard({ memory, score }) {
+            const m = memory;
+            const impClass = m.importance >= 0.7 ? 'high' : m.importance >= 0.4 ? 'medium' : 'low';
+            const impText = m.importance >= 0.7 ? '高' : m.importance >= 0.4 ? '中' : '低';
+            const tagsHtml = m.tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('');
+            const scoreHtml = score ? `<span class="score">相关度: ${(score * 100).toFixed(1)}%</span>` : '';
+            
+            return `
+                <div class="memory-card" data-id="${m.id}">
+                    <div class="memory-header">
+                        <div class="memory-meta">
+                            <span class="category">${escapeHtml(m.category)}</span>
+                            <span class="importance ${impClass}">重要性: ${impText} (${m.importance})</span>
+                            ${scoreHtml}
+                        </div>
+                        <div class="actions">
+                            <button class="btn btn-secondary" onclick="viewMemory('${m.id}')">查看</button>
+                            <button class="btn btn-danger" onclick="deleteMemory('${m.id}')">删除</button>
+                        </div>
+                    </div>
+                    <div class="memory-content">${escapeHtml(m.content)}</div>
+                    <div class="memory-footer">
+                        <div class="tags">${tagsHtml}</div>
+                        <div>访问 ${m.access_count} 次 · ${formatDate(m.created_at)}</div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // 打开创建模态框
+        function openCreateModal() {
+            document.getElementById('modalTitle').textContent = '新建记忆';
+            document.getElementById('editId').value = '';
+            document.getElementById('memoryForm').reset();
+            document.getElementById('importance').value = '0.5';
+            document.getElementById('createModal').classList.add('active');
+        }
+        
+        // 关闭模态框
+        function closeModal() {
+            document.getElementById('createModal').classList.remove('active');
+        }
+        
+        // 保存记忆
+        async function saveMemory(e) {
+            e.preventDefault();
+            
+            const content = document.getElementById('content').value.trim();
+            const category = document.getElementById('category').value;
+            const importance = parseFloat(document.getElementById('importance').value) || 0.5;
+            const tagsStr = document.getElementById('tags').value.trim();
+            const tags = tagsStr ? tagsStr.split(',').map(t => t.trim()).filter(t => t) : [];
+            
+            try {
+                const res = await fetch(`${API_BASE}/memories`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content, category, importance, tags })
+                });
+                
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+                
+                showToast('记忆创建成功', 'success');
+                closeModal();
+                loadMemories();
+            } catch (e) {
+                showToast('保存失败: ' + e.message, 'error');
+            }
+        }
+        
+        // 查看记忆详情
+        async function viewMemory(id) {
+            try {
+                const res = await fetch(`${API_BASE}/memories/${id}`);
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+                
+                const m = data.data;
+                alert(`ID: ${m.id}\n\n内容:\n${m.content}\n\n分类: ${m.category}\n重要性: ${m.importance}\n标签: ${m.tags.join(', ')}\n访问次数: ${m.access_count}\n创建时间: ${m.created_at}`);
+            } catch (e) {
+                showToast('获取详情失败: ' + e.message, 'error');
+            }
+        }
+        
+        // 删除记忆
+        async function deleteMemory(id) {
+            if (!confirm('确定要删除这条记忆吗？此操作不可撤销。')) return;
+            
+            try {
+                const res = await fetch(`${API_BASE}/memories/${id}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+                
+                showToast('删除成功', 'success');
+                loadMemories();
+            } catch (e) {
+                showToast('删除失败: ' + e.message, 'error');
+            }
+        }
+        
+        // 工具函数
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+        
+        function formatDate(isoStr) {
+            const d = new Date(isoStr);
+            return d.toLocaleDateString('zh-CN') + ' ' + d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+        }
+        
+        function showToast(msg, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = msg;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+        
+        // 回车搜索
+        document.getElementById('searchInput').addEventListener('keypress', e => {
+            if (e.key === 'Enter') loadMemories();
+        });
+        
+        // ========== 待处理池管理功能 ==========
+        
+        // 加载待处理池状态
+        async function loadPendingStatus() {
+            try {
+                const res = await fetch(`${API_BASE}/pending`);
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('pendingCount').textContent = data.data.pending_count;
+                    return data.data;
+                }
+            } catch (e) {
+                console.error('加载待处理池状态失败:', e);
+            }
+            return null;
+        }
+        
+        // 打开待处理池模态框
+        async function openPendingModal() {
+            document.getElementById('pendingModal').classList.add('active');
+            await refreshPendingStatus();
+        }
+        
+        // 关闭待处理池模态框
+        function closePendingModal() {
+            document.getElementById('pendingModal').classList.remove('active');
+        }
+        
+        // 刷新待处理池状态
+        async function refreshPendingStatus() {
+            const listEl = document.getElementById('pendingPreviewList');
+            listEl.innerHTML = '<div style="color: #666; text-align: center; padding: 40px;">加载中...</div>';
+            
+            try {
+                const res = await fetch(`${API_BASE}/pending`);
+                const data = await res.json();
+                
+                if (!data.success) throw new Error(data.error);
+                
+                const { pending_count, preview } = data.data;
+                document.getElementById('pendingModalCount').textContent = pending_count;
+                document.getElementById('pendingCount').textContent = pending_count;
+                
+                if (preview.length === 0) {
+                    listEl.innerHTML = '<div style="color: #666; text-align: center; padding: 40px;">待处理池为空</div>';
+                    return;
+                }
+                
+                listEl.innerHTML = preview.map((m, i) => `
+                    <div style="padding: 12px; background: #1a1a2e; border-radius: 8px; margin-bottom: 8px; border-left: 3px solid #f59e0b;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                            <span style="color: #888; font-size: 0.8em;">#${i + 1} · ${escapeHtml(m.category)}</span>
+                            <span style="color: #666; font-size: 0.8em;">重要性: ${m.importance}</span>
+                        </div>
+                        <div style="color: #ddd; line-height: 1.5;">${escapeHtml(m.content)}</div>
+                        <div style="color: #555; font-size: 0.75em; margin-top: 6px;">
+                            来源: ${escapeHtml(m.source_session)} · ${formatDate(m.created_at)}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                listEl.innerHTML = `<div style="color: #dc2626; text-align: center; padding: 40px;">加载失败: ${escapeHtml(e.message)}</div>`;
+            }
+        }
+        
+        // 处理全部待处理记忆
+        async function processAllPending() {
+            if (!confirm('确定要将所有待处理记忆存入长期记忆库吗？')) return;
+            
+            try {
+                const res = await fetch(`${API_BASE}/pending/process`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+                
+                const { processed, failed, remaining } = data.data;
+                showToast(`成功处理 ${processed} 条，失败 ${failed} 条，剩余 ${remaining} 条`, 'success');
+                
+                await refreshPendingStatus();
+                loadMemories(); // 刷新记忆列表
+            } catch (e) {
+                showToast('处理失败: ' + e.message, 'error');
+            }
+        }
+        
+        // 清空全部待处理记忆
+        async function clearAllPending() {
+            if (!confirm('确定要清空所有待处理记忆吗？此操作不可撤销！')) return;
+            
+            try {
+                const res = await fetch(`${API_BASE}/pending`, { method: 'DELETE' });
+                const data = await res.json();
+                
+                if (!data.success) throw new Error(data.error);
+                
+                showToast(data.data, 'success');
+                await refreshPendingStatus();
+            } catch (e) {
+                showToast('清空失败: ' + e.message, 'error');
+            }
+        }
+        
+        // ========== 记忆转化功能 ==========
+        
+        // 打开转化模态框
+        function openExtractModal() {
+            document.getElementById('extractModal').classList.add('active');
+            document.getElementById('extractResult').style.display = 'none';
+            document.getElementById('extractMessages').value = '';
+            document.getElementById('autoStore').checked = false;
+        }
+        
+        // 关闭转化模态框
+        function closeExtractModal() {
+            document.getElementById('extractModal').classList.remove('active');
+        }
+        
+        // 触发记忆转化
+        async function triggerExtraction() {
+            const messagesStr = document.getElementById('extractMessages').value.trim();
+            const autoStore = document.getElementById('autoStore').checked;
+            
+            if (!messagesStr) {
+                showToast('请输入对话历史', 'error');
+                return;
+            }
+            
+            let messages;
+            try {
+                messages = JSON.parse(messagesStr);
+                if (!Array.isArray(messages)) throw new Error('必须是数组');
+            } catch (e) {
+                showToast('JSON格式错误: ' + e.message, 'error');
+                return;
+            }
+            
+            const resultDiv = document.getElementById('extractResult');
+            const listDiv = document.getElementById('extractedList');
+            const rawPre = document.getElementById('rawResponse');
+            
+            listDiv.innerHTML = '<div style="color: #888;">转化中，请稍候...</div>';
+            resultDiv.style.display = 'block';
+            
+            try {
+                const res = await fetch(`${API_BASE}/extract`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ messages, auto_store: autoStore })
+                });
+                
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || '转化失败');
+                
+                const result = data.data;
+                rawPre.textContent = result.raw_response || '(无)';
+                
+                if (result.extracted_memories.length === 0) {
+                    listDiv.innerHTML = '<div style="color: #888;">未提取到任何记忆</div>';
+                } else {
+                    const items = result.extracted_memories.map((m, i) => `
+                        <div style="padding: 8px 12px; background: #1a1a2e; border-radius: 6px; margin-bottom: 8px; border-left: 3px solid #10b981;">
+                            <span style="color: #666; font-size: 0.8em;">#${i + 1}</span>
+                            <div style="margin-top: 4px;">${escapeHtml(m)}</div>
+                        </div>
+                    `).join('');
+                    
+                    let summary = `<div style="margin-bottom: 12px; color: #10b981;">✅ 成功提取 ${result.extracted_memories.length} 条记忆</div>`;
+                    if (result.stored_count !== null) {
+                        summary += `<div style="margin-bottom: 12px; color: #f59e0b;">💾 已存储 ${result.stored_count} 条到长期记忆</div>`;
+                    }
+                    
+                    listDiv.innerHTML = summary + items;
+                    
+                    if (result.stored_count > 0) {
+                        showToast(`已存储 ${result.stored_count} 条记忆`, 'success');
+                        loadMemories(); // 刷新列表
+                    }
+                }
+            } catch (e) {
+                listDiv.innerHTML = `<div style="color: #dc2626;">❌ 转化失败: ${escapeHtml(e.message)}</div>`;
+                showToast('转化失败: ' + e.message, 'error');
+            }
+        }
+        
+        // 初始加载
+        loadMemories();
+        loadPendingStatus();
+    </script>
+</body>
+</html>
