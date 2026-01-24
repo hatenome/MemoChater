@@ -15,6 +15,7 @@ use std::{convert::Infallible, sync::Arc};
 use axum::extract::Path;
 use crate::state::AppState;
 use crate::pipeline::{ConversationPacket, PipelineConfig, PipelineTiming, ThinkingEntry};
+use crate::ai::AiClient;
 use crate::types::{ChatMessage, ShortTermMemory, ThinkingSource, MemorySource};
 
 /// OpenAI 兼容的请求格式（扩展支持助手隔离）
@@ -425,10 +426,19 @@ async fn create_stream_response(
             }],
         };
         yield Ok(Event::default().data(serde_json::to_string(&chunk).unwrap()));
-        yield Ok(Event::default().data("[DONE]"));
+yield Ok(Event::default().data("[DONE]"));
 
-        // 追加 AI 响应到数据包
-        packet.append_assistant_message(&full_response);
+        // 打印AI完整响应
+        tracing::info!("========== AI API 响应 ==========");
+        let response_preview: String = full_response.chars().take(500).collect();
+        let suffix = if full_response.len() > 500 { "..." } else { "" };
+        tracing::info!("响应长度: {} 字符", full_response.len());
+        tracing::info!("内容: {}{}", response_preview, suffix);
+        tracing::info!("=================================");
+
+// 过滤思考标签后追加 AI 响应到数据包
+        let cleaned_response = AiClient::strip_thinking_tags(&full_response);
+        packet.append_assistant_message(&cleaned_response);
 
         // 保存当前轮次对话（在后处理之前，避免被清理器清空）
         packet.save_conversation_turn();

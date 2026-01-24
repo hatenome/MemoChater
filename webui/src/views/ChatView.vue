@@ -5,6 +5,9 @@ import { useAssistantStore, useAppStore } from '@/stores'
 import { chatApi, assistantsApi } from '@/api'
 import ChatMessage from '@/components/ChatMessage.vue'
 import ChatInput from '@/components/ChatInput.vue'
+import ToolCallBlock from '@/components/ToolCallBlock.vue'
+import ToolResultBlock from '@/components/ToolResultBlock.vue'
+import { parseVCPContent, hasVCPBlocks } from '@/utils/vcpParser'
 import type { ThinkingEntry, ShortTermMemoryEntry, ConversationTurn } from '@/types'
 
 const route = useRoute()
@@ -42,6 +45,9 @@ const hasContext = computed(() => store.currentAssistantId && store.currentTopic
 
 // 判断当前话题是否为记忆话题
 const isMemoryTopic = computed(() => store.currentTopic?.topic_type === 'memory')
+
+// 过滤系统消息
+const displayMessages = computed(() => store.messages.filter(m => m.role !== 'system'))
 
 // 截断文本（用于预览）
 function truncateText(text: string, maxLength: number = 100): string {
@@ -244,7 +250,7 @@ function addShortTerm() {
     memory_type: 'other',
     relevance: 0.5,
     confidence: 1.0,
-    should_expand: false,
+    should_expand: true,
     source: 'CurrentConversation',
     timestamp: new Date().toISOString()
   })
@@ -486,7 +492,7 @@ async function handleRegenerate(index: number) {
         <!-- 消息列表 -->
         <div v-else class="max-w-4xl mx-auto">
           <ChatMessage
-            v-for="(msg, index) in store.messages"
+            v-for="(msg, index) in displayMessages"
             :key="index"
             :message="msg"
             :index="index"
@@ -515,7 +521,16 @@ async function handleRegenerate(index: number) {
             <!-- AI回复 -->
             <div>
               <div class="text-xs text-purple-400 mb-1">{{ store.currentAssistantConfig?.roles.assistant_name || '助手' }}</div>
-              <div class="text-sm text-dark-300 whitespace-pre-wrap">{{ conversationTurns[conversationTurns.length - 1].assistant_message }}</div>
+              <div class="text-sm text-dark-300">
+                <template v-if="hasVCPBlocks(conversationTurns[conversationTurns.length - 1].assistant_message)">
+                  <template v-for="(segment, idx) in parseVCPContent(conversationTurns[conversationTurns.length - 1].assistant_message)" :key="idx">
+                    <div v-if="segment.type === 'text'" class="whitespace-pre-wrap">{{ segment.content }}</div>
+                    <ToolCallBlock v-else-if="segment.type === 'tool_call'" :content="segment.content" :parsed="segment.parsed" />
+                    <ToolResultBlock v-else-if="segment.type === 'tool_result'" :content="segment.content" :parsed="segment.parsed" />
+                  </template>
+                </template>
+                <div v-else class="whitespace-pre-wrap">{{ conversationTurns[conversationTurns.length - 1].assistant_message }}</div>
+              </div>
             </div>
           </div>
         </div>

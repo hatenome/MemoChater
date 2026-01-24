@@ -324,8 +324,16 @@ impl AiClient {
         let body_json = serde_json::to_string(&request_body)
             .map_err(|e| AiError::ParseError(e.to_string()))?;
         
-        let preview: String = body_json.chars().take(100).collect();
-        tracing::debug!("Request body: {}", preview);
+        // 打印发送给AI的完整请求内容
+        tracing::info!("========== AI API 请求 ==========");
+        tracing::info!("Model: {}", use_model);
+        tracing::info!("Messages数量: {}", messages.len());
+        for (i, msg) in messages.iter().enumerate() {
+            let content_preview: String = msg.content.chars().take(200).collect();
+            let suffix = if msg.content.len() > 200 { "..." } else { "" };
+            tracing::info!("[{}] {}: {}{}", i, msg.role, content_preview, suffix);
+        }
+        tracing::info!("=================================");
         
         let auth_header = format!("Bearer {}", self.api_key);
         
@@ -368,9 +376,7 @@ impl AiClient {
             let mut buffer = String::new();
             let mut chunk_count = 0;
             
-            // 思考标签过滤状态
-            let mut in_thinking_tag = false;
-            let mut tag_buffer = String::new();
+            
             
             tracing::debug!("进入流式循环");
             
@@ -390,39 +396,21 @@ impl AiClient {
                             }
                             
                             if let Some(json_str) = line.strip_prefix("data: ") {
+                                
                                 match serde_json::from_str::<StreamChunk>(json_str) {
                                     Ok(chunk) => {
                                         if let Some(choice) = chunk.choices.first() {
+                                            // 只取 content，忽略 reasoning_content（思考过程）
                                             if let Some(content) = &choice.delta.content {
-                                                // 过滤思考标签
-                                                for ch in content.chars() {
-                                                    if ch == '<' {
-                                                        tag_buffer.clear();
-                                                        tag_buffer.push(ch);
-                                                    } else if !tag_buffer.is_empty() {
-                                                        tag_buffer.push(ch);
-                                                        
-                                                        if tag_buffer.starts_with("<think") && ch == '>' {
-                                                            in_thinking_tag = true;
-                                                            tag_buffer.clear();
-                                                        } else if in_thinking_tag && tag_buffer.ends_with("</think>") {
-                                                            in_thinking_tag = false;
-                                                            tag_buffer.clear();
-                                                        } else if in_thinking_tag && tag_buffer.ends_with("</thinking>") {
-                                                            in_thinking_tag = false;
-                                                            tag_buffer.clear();
-                                                        } else if !in_thinking_tag && !tag_buffer.starts_with("<think") && ch == '>' {
-                                                            yield Ok(tag_buffer.clone());
-                                                            tag_buffer.clear();
-                                                        }
-                                                    } else if !in_thinking_tag {
-                                                        yield Ok(ch.to_string());
-                                                    }
+                                                if !content.is_empty() {
+                                                    yield Ok(content.clone());
                                                 }
                                             }
                                         }
                                     }
-                                    Err(_) => {}
+                                    Err(e) => {
+                                        tracing::warn!("JSON解析失败: {} - 原文: {}", e, &json_str[..json_str.len().min(50)]);
+                                    }
                                 }
                             }
                         }
@@ -487,6 +475,7 @@ struct StreamChoice {
 #[derive(Debug, Deserialize)]
 struct StreamDelta {
     content: Option<String>,
+    reasoning_content: Option<String>,
 }
 
 // ============ Embedding 请求/响应结构 ============

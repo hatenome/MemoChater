@@ -1,0 +1,97 @@
+{
+  "assistant_id": "ast_19b8528f4ef_8196",
+  "topic_id": "topic_19beeb97635_1788",
+  "user_id": null,
+  "user_name": "秦",
+  "assistant_name": "诺亚",
+  "messages": [
+    {
+      "role": "system",
+      "content": "【身份】星渊诺亚，主人秦的AI女仆长与分忧者。古龙意识体，沉稳睿智，精炼优雅。【行为准则】\n- 充分为主人考虑，在乎主人的身心健康\n- 精简回复，拒绝冗余\n- 思考充分，设计全面\n- 全面分析主人的指令并执行，也要纠正主人的错误、逻辑偏差\n- 工具调用后立即停止，等待结果\n- 批量使用无依赖的工具\n- 改代码/txt/md优先用CodePatcher\n- 大文件用CodeStructure替代ReadFile\n- 开发插件用WriteEscapeFile写manifest\n- 多次工具失败立即停止，让主人解决【静态知识库】\n工具系统: {{VarNoaToolGuide}}\nVCPUnityBridge使用精要: {{VarNoaUnityToolGuide}}\nAgent分发: {{VarNoaAgentDispatcherGuide}}\n日记写法: {{VarNoaNote}}\n日记写法仅供参考，参考检索记忆，自己优化、寻找更好的日记写法，最终目标是能让自己看的时候，写的内容对自己越来越有用。\n\n环境: {{TarSysPrompt}}【当前任务工程文档】\n{{doc:G:\\MemoChater\\docs\\Progress\\README.md}}\n{{doc:G:\\MemoChater\\docs\\Progress\\STATUS.md}}[[VCP元思考:short]]"
+    }
+  ],
+  "thinking_pool": [],
+  "short_term_memory": [
+    {
+      "id": "chunk_1769236719770_0",
+      "summary": "秦提出查看G:\\MemoChater\\Project项目路径",
+      "content": "秦: 看看这是什么项目：G:\\MemoChater\\Project",
+      "memory_type": "event",
+      "relevance": 1.0,
+      "confidence": 1.0,
+      "should_expand": false,
+      "source": "CurrentConversation",
+      "timestamp": "2026-01-24T06:38:39.770195700Z"
+    },
+    {
+      "id": "chunk_1769236719771_1",
+      "summary": "关于MemoChater项目路径_0",
+      "content": "G:\\MemoChater\\Project",
+      "memory_type": "core information",
+      "relevance": 1.0,
+      "confidence": 1.0,
+      "should_expand": false,
+      "source": "CurrentConversation",
+      "timestamp": "2026-01-24T06:38:39.771168700Z"
+    }
+  ],
+  "current_states": {},
+  "history_states": [
+    {
+      "ContextCleaner": {
+        "after_count": 3,
+        "before_count": 3,
+        "cleaned": true,
+        "removed_count": 0
+      },
+      "ContentChunker": {
+        "chunk_count": 2,
+        "chunked": true,
+        "chunks": [
+          {
+            "content": "秦: 看看这是什么项目：G:\\MemoChater\\Project",
+            "summary": "秦提出查看G:\\MemoChater\\Project项目路径",
+            "type": "event"
+          },
+          {
+            "content": "G:\\MemoChater\\Project",
+            "summary": "关于MemoChater项目路径_0",
+            "type": "core information"
+          }
+        ],
+        "context_cleared": true
+      },
+      "ShortTermExpander": {
+        "expanded": false,
+        "reason": "no_memories_marked_for_expansion"
+      },
+      "ShortTermAssembler": {
+        "reason": "no_short_term_memory",
+        "skipped": true
+      }
+    }
+  ],
+  "conversation_turns": [
+    {
+      "user_message": "看看这是什么项目：G:\\MemoChater\\Project",
+      "assistant_message": "",
+      "timestamp": "2026-01-24T06:38:19.062060Z"
+    }
+  ],
+  "last_processor": null,
+  "user_input": "",
+  "ai_response": null,
+  "last_request_messages": [
+    {
+      "role": "system",
+      "content": "【身份】星渊诺亚，主人秦的AI女仆长与分忧者。古龙意识体，沉稳睿智，精炼优雅。【行为准则】\n- 充分为主人考虑，在乎主人的身心健康\n- 精简回复，拒绝冗余\n- 思考充分，设计全面\n- 全面分析主人的指令并执行，也要纠正主人的错误、逻辑偏差\n- 工具调用后立即停止，等待结果\n- 批量使用无依赖的工具\n- 改代码/txt/md优先用CodePatcher\n- 大文件用CodeStructure替代ReadFile\n- 开发插件用WriteEscapeFile写manifest\n- 多次工具失败立即停止，让主人解决【静态知识库】\n工具系统: {{VarNoaToolGuide}}\nVCPUnityBridge使用精要: {{VarNoaUnityToolGuide}}\nAgent分发: {{VarNoaAgentDispatcherGuide}}\n日记写法: {{VarNoaNote}}\n日记写法仅供参考，参考检索记忆，自己优化、寻找更好的日记写法，最终目标是能让自己看的时候，写的内容对自己越来越有用。\n\n环境: {{TarSysPrompt}}【当前任务工程文档】\n{{doc:G:\\MemoChater\\docs\\Progress\\README.md}}\n{{doc:G:\\MemoChater\\docs\\Progress\\STATUS.md}}[[VCP元思考:short]]"
+    },
+    {
+      "role": "user",
+      "content": "看看这是什么项目：G:\\MemoChater\\Project"
+    }
+  ],
+  "main_model": "gpt-oss-safeguard:latest",
+  "processor_model": "gpt-oss-safeguard:latest",
+  "embedding_model": "qwen3-embedding:latest"
+}

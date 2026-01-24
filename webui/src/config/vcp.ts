@@ -1,0 +1,6 @@
+export const TOOL_START='<<<[TOOL_REQUEST]>>>'
+export const TOOL_END='<<<[END_TOOL_REQUEST]>>>'
+export const RESULT_START= '[[VCP调用结果信息汇总:'
+export const RESULT_END='VCP调用结果结束]]'
+export const PARAM_START= '「始」'
+export const PARAM_END='「末」'

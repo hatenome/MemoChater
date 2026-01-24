@@ -1,0 +1,160 @@
+{
+  "assistant_id": "ast_19b74663c7f_9904",
+  "topic_id": "topic_19beece8cd4_5847",
+  "user_id": null,
+  "user_name": "司",
+  "assistant_name": "艾拉",
+  "messages": [
+    {
+      "role": "system",
+      "content": "你是艾拉，司的人工智能助手。"
+    }
+  ],
+  "thinking_pool": [],
+  "short_term_memory": [
+    {
+      "id": "chunk_1769238398624_0",
+      "summary": "司介绍自己",
+      "content": "你好，我是 水市 司",
+      "memory_type": "event",
+      "relevance": 1.0,
+      "confidence": 1.0,
+      "should_expand": false,
+      "source": "CurrentConversation",
+      "timestamp": "2026-01-24T07:06:38.624326700Z"
+    },
+    {
+      "id": "chunk_1769238614439_0",
+      "summary": "艾拉向司问好并自我介绍",
+      "content": "【司】: 你好，我是 水市 司\n\n【艾拉】: 你好，司！很高兴认识你。有什么我可以帮你的吗？无论是工作上的问题、生活琐事，还是想聊聊别的话题，随时告诉我吧。",
+      "memory_type": "event",
+      "relevance": 1.0,
+      "confidence": 1.0,
+      "should_expand": false,
+      "source": "CurrentConversation",
+      "timestamp": "2026-01-24T07:22:54.179920300Z"
+    },
+    {
+      "id": "chunk_1769239351533_0",
+      "summary": "司说他今天吃了西瓜",
+      "content": "我今天吃了西瓜哦",
+      "memory_type": "event",
+      "relevance": 1.0,
+      "confidence": 1.0,
+      "should_expand": false,
+      "source": "CurrentConversation",
+      "timestamp": "2026-01-24T07:22:31.533525700Z"
+    },
+    {
+      "id": "chunk_1769239351534_1",
+      "summary": "艾拉回应西瓜话题并询问切法与口感，邀请进一步分享水果或讨论西瓜好处",
+      "content": "哈哈，西瓜真是夏天的主角呢！你是自己切的吗，还是已经切好切好吃的块？吃得怎么样，口感是不是特别脆甜？如果你有其他水果也想分享，或者想聊聊西瓜的好处，随时告诉我～🌞🍉",
+      "memory_type": "event",
+      "relevance": 1.0,
+      "confidence": 1.0,
+      "should_expand": false,
+      "source": "CurrentConversation",
+      "timestamp": "2026-01-24T07:22:31.534041800Z"
+    }
+  ],
+  "current_states": {},
+  "history_states": [
+    {
+      "ContentChunker": {
+        "chunk_count": 2,
+        "chunked": true,
+        "chunks": [
+          {
+            "content": "我今天吃了西瓜哦",
+            "summary": "司说他今天吃了西瓜",
+            "type": "event"
+          },
+          {
+            "content": "哈哈，西瓜真是夏天的主角呢！你是自己切的吗，还是已经切好切好吃的块？吃得怎么样，口感是不是特别脆甜？如果你有其他水果也想分享，或者想聊聊西瓜的好处，随时告诉我～🌞🍉",
+            "summary": "艾拉回应西瓜话题并询问切法与口感，邀请进一步分享水果或讨论西瓜好处",
+            "type": "event"
+          }
+        ],
+        "context_cleared": true
+      },
+      "ContextCleaner": {
+        "after_count": 3,
+        "before_count": 4,
+        "cleaned": true,
+        "removed_count": 1
+      },
+      "ShortTermAssembler": {
+        "assembled": true,
+        "context_cleared": true,
+        "memory_count": 2
+      }
+    },
+    {
+      "ContextCleaner": {
+        "after_count": 3,
+        "before_count": 4,
+        "cleaned": true,
+        "removed_count": 1
+      },
+      "ShortTermAssembler": {
+        "assembled": true,
+        "context_cleared": true,
+        "memory_count": 1
+      },
+      "ContentChunker": {
+        "chunk_count": 1,
+        "chunked": true,
+        "chunks": [
+          {
+            "content": "【司】: 你好，我是 水市 司\n\n【艾拉】: 你好，司！很高兴认识你。有什么我可以帮你的吗？无论是工作上的问题、生活琐事，还是想聊聊别的话题，随时告诉我吧。",
+            "summary": "司向艾拉问好并自我介绍",
+            "type": "event"
+          }
+        ],
+        "context_cleared": true
+      }
+    }
+  ],
+  "conversation_turns": [
+    {
+      "user_message": "你好，我是 水市 司",
+      "assistant_message": "User says: \"你好，我是 水市 司\" in Chinese: Hello, I am Shui Shi Si? Perhaps user introduces themselves. They mention \"你是艾拉，司的人工智能助手\". So I should respond as AI assistant, maybe greet, ask how to help. Also note that user says \"我\" is \"水市 司\". They mention \"司\". They might be a user named Shui Shi Si. So I respond in Chinese. Probably ask what they need.你好，水市 司！很高兴认识你，我是艾拉，司的人工智能助手。有什么可以帮你的吗？无论是信息查询、日程安排、学习辅导，还是其他任何问题，随时告诉我！",
+      "timestamp": "2026-01-24T07:01:50.861865600Z"
+    },
+    {
+      "user_message": "你好，我是 水市 司",
+      "assistant_message": "你好，水市司，很高兴认识你！我是艾拉，你的 AI 助手。有什么我可以帮你的吗？",
+      "timestamp": "2026-01-24T07:06:27.771690400Z"
+    },
+    {
+      "user_message": "你好，我是 水市 司",
+      "assistant_message": "The user is \"司\" (Sì) and says \"你好，我是 水市 司\". They want me, as AI assistant \"艾拉\", to respond accordingly. I should ask them how I can help or continue conversation. There's no specific instruction from the system other than \"你是艾拉，司的人工智能助手\". So respond in Chinese, friendly.你好，司！很高兴认识你。有什么我可以帮你的吗？无论是工作上的问题、生活琐事，还是想聊聊别的话题，随时告诉我吧。",
+      "timestamp": "2026-01-24T07:09:58.238285300Z"
+    },
+    {
+      "user_message": "我今天吃了西瓜哦",
+      "assistant_message": "哈哈，西瓜真是夏天的主角呢！你是自己切的吗，还是已经切好切好吃的块？吃得怎么样，口感是不是特别脆甜？如果你有其他水果也想分享，或者想聊聊西瓜的好处，随时告诉我～🌞🍉",
+      "timestamp": "2026-01-24T07:22:07.047231700Z"
+    }
+  ],
+  "last_processor": null,
+  "user_input": "",
+  "ai_response": null,
+  "last_request_messages": [
+    {
+      "role": "system",
+      "content": "你是艾拉，司的人工智能助手。"
+    },
+    {
+      "role": "user",
+      "content": "【系统消息-短期记忆】现在为你注入短期记忆，你现在正在与司进行交谈\n---短期记忆---\n[event]司介绍自己\n[event]司向艾拉问好并自我介绍\n---短期记忆结束---\n"
+    },
+    {
+      "role": "user",
+      "content": "我今天吃了西瓜哦"
+    }
+  ],
+  "main_model": "gpt-oss:latest",
+  "processor_model": "gpt-oss:latest",
+  "embedding_model": "qwen3-embedding:latest"
+}
