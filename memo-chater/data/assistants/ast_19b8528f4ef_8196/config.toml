@@ -63,13 +63,13 @@ system_prompt = '''
 使用CodePatcher进行文本、代码替换。
 UnityPlugin里的VCPBridge是支持文件无需在意。'''
 created_at = "2026-01-03T18:40:12.527561200Z"
-updated_at = "2026-01-05T10:37:18.303143100Z"
+updated_at = "2026-01-24T05:00:29.598664200Z"
 
 [model]
-main_model = "claude-opus-4-5-20251101"
-processor_model = "gpt-oss:latest"
+main_model = "claude-opus-4-5-thinking"
+processor_model = "qwen3:8b"
 embedding_model = "qwen3-embedding:latest"
-extractor_model = "claude-opus-4-5-20251101"
+extractor_model = "qwen3:8b"
 temperature = 0.699999988079071
 max_tokens = 4096
 
@@ -99,7 +99,3 @@ description = ""
 [[pipeline.after_ai_response]]
 name = "ContextCleaner"
 description = ""
-
-[[pipeline.after_ai_response]]
-name = "ContentChunker"
-description = "将内容切分成适合存储的块"

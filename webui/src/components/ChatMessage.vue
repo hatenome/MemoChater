@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import type { ChatMessage } from '@/types'
+import { parseVCPContent, hasVCPBlocks } from '@/utils/vcpParser'
+import ToolCallBlock from './ToolCallBlock.vue'
+import ToolResultBlock from './ToolResultBlock.vue'
 
 const props = defineProps<{
   message: ChatMessage
   index: number
   assistantName?: string
   userName?: string
+  streaming?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -21,6 +25,15 @@ const displayName = computed(() => {
   if (props.message.role === 'user') return props.userName || '用户'
   if (props.message.role === 'assistant') return props.assistantName || '助手'
   return 'System'
+})
+
+// 解析VCP内容
+const parsedSegments = computed(() => {
+  const content = props.message.content || ''
+  if (hasVCPBlocks(content)) {
+    return parseVCPContent(content)
+  }
+  return [{ type: 'text' as const, content }]
 })
 
 // 编辑状态
@@ -82,6 +95,7 @@ function handleRegenerate() {
           {{ displayName }}
         </span>
         <span class="text-xs text-dark-500">#{{ index }}</span>
+        <span v-if="streaming" class="text-xs text-blue-400 animate-pulse">生成中...</span>
       </div>
       
       <!-- 编辑模式 -->
@@ -109,9 +123,45 @@ function handleRegenerate() {
         </div>
       </div>
       
-      <!-- 显示模式 -->
-      <div v-else class="text-dark-200 whitespace-pre-wrap break-words leading-relaxed">
-        {{ message.content }}
+      <!-- 显示模式 - 分段渲染 -->
+      <div v-else class="message-content">
+        <template v-for="(segment, idx) in parsedSegments" :key="idx">
+          <!-- 普通文本 -->
+          <div v-if="segment.type === 'text'" class="text-dark-200 whitespace-pre-wrap break-words leading-relaxed">
+            {{ segment.content }}
+          </div>
+          
+          <!-- 工具调用块 -->
+          <ToolCallBlock 
+            v-else-if="segment.type === 'tool_call'"
+            :content="segment.content"
+            :parsed="segment.parsed"
+          />
+          
+          <!-- 工具调用中（流式） -->
+          <ToolCallBlock 
+            v-else-if="segment.type === 'tool_call_pending'"
+            :content="segment.content"
+            :pending="true"
+          />
+          
+          <!-- 工具返回块 -->
+          <ToolResultBlock 
+            v-else-if="segment.type === 'tool_result'"
+            :content="segment.content"
+            :parsed="segment.parsed"
+          />
+          
+          <!-- 工具返回中（流式） -->
+          <ToolResultBlock 
+            v-else-if="segment.type === 'tool_result_pending'"
+            :content="segment.content"
+            :pending="true"
+          />
+        </template>
+        
+        <!-- 流式光标 -->
+        <span v-if="streaming" class="streaming-cursor">▊</span>
       </div>
     </div>
 
@@ -160,3 +210,15 @@ function handleRegenerate() {
     </div>
   </div>
 </template>
+
+<style scoped>
+.streaming-cursor {
+  animation: blink 1s infinite;
+  color: #60a5fa;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+</style>
