@@ -2,7 +2,7 @@ name = "艾拉"
 description = ""
 system_prompt = "你是艾拉，司的人工智能助手。"
 created_at = "2025-12-31T12:33:35.871428500Z"
-updated_at = "2026-01-03T18:33:40.724983700Z"
+updated_at = "2026-01-25T06:40:30.535136500Z"
 
 [model]
 main_model = "gpt-oss:latest"
@@ -29,6 +29,10 @@ background_process = []
 
 [[pipeline.on_user_message]]
 name = "ShortTermAssembler"
+description = ""
+
+[[pipeline.on_user_message]]
+name = "ShortTermExpander"
 description = ""
 
 [[pipeline.after_ai_response]]
