@@ -10,8 +10,9 @@ import ToolResultBlock from '@/components/ToolResultBlock.vue'
 import MemoryPanel from '@/components/MemoryPanel.vue'
 import ThinkingPanel from '@/components/panels/ThinkingPanel.vue'
 import ShortTermPanel from '@/components/panels/ShortTermPanel.vue'
+import ConversationMemoryPanel from '@/components/panels/ConversationMemoryPanel.vue'
 import { parseVCPContent, hasVCPBlocks } from '@/utils/vcpParser'
-import type { ThinkingEntry, ShortTermMemoryEntry, ConversationTurn } from '@/types'
+import type { ThinkingEntry, ShortTermMemoryEntry, ConversationTurn, VectorMemoryEntry } from '@/types'
 
 const route = useRoute()
 const store = useAssistantStore()
@@ -33,6 +34,11 @@ const isLoadingMemory = ref(false)
 const isSavingThinking = ref(false)
 const isSavingShortTerm = ref(false)
 
+// 对话记忆库状态
+const conversationMemory = ref<VectorMemoryEntry[]>([])
+const isConversationMemoryLoading = ref(false)
+const conversationMemorySearchResults = ref<{ memory: VectorMemoryEntry, score: number }[] | null>(null)
+
 // 编辑状态
 const editingThinkingIndex = ref<number | null>(null)
 const editingShortTermIndex = ref<number | null>(null)
@@ -53,6 +59,7 @@ const isMemoryTopic = computed(() => store.currentTopic?.topic_type === 'memory'
 const memoryTabs = [
   { id: 'thinking', icon: '💭', label: '思考池' },
   { id: 'shortTerm', icon: '🧠', label: '短期记忆' },
+  { id: 'conversationMemory', icon: '📚', label: '对话记忆库' },
 ]
 
 // 过滤系统消息
@@ -97,10 +104,14 @@ watch(
   async ([assistantId, topicId]) => {
     if (assistantId && topicId) {
       await loadPacketMemory()
+      // 同时加载对话记忆库
+      await loadConversationMemory()
     } else {
       thinkingPool.value = []
       shortTermMemory.value = []
       conversationTurns.value = []
+      conversationMemory.value = []
+      conversationMemorySearchResults.value = null
     }
   },
   { immediate: true }
@@ -287,6 +298,92 @@ function handleShortTermEdit(index: number, data: Partial<typeof shortTermMemory
   if (data.confidence !== undefined) mem.confidence = data.confidence
   if (data.timestamp !== undefined) mem.timestamp = data.timestamp
   saveShortTermMemory()
+}
+
+// ============ 对话记忆库操作 ============
+
+// 加载对话记忆库
+async function loadConversationMemory() {
+  if (!store.currentAssistantId || !store.currentTopicId) return
+  
+  isConversationMemoryLoading.value = true
+  try {
+    const data = await assistantsApi.listConversationMemory(
+      store.currentAssistantId,
+      store.currentTopicId
+    )
+    conversationMemory.value = data.memories || []
+  } catch (e) {
+    console.error('加载对话记忆库失败:', e)
+    app.showToast('加载对话记忆库失败', 'error')
+  } finally {
+    isConversationMemoryLoading.value = false
+  }
+}
+
+// 搜索对话记忆库
+async function handleConversationMemorySearch(query: string) {
+  if (!store.currentAssistantId || !store.currentTopicId) return
+  
+  isConversationMemoryLoading.value = true
+  try {
+    const results = await assistantsApi.searchConversationMemory(
+      store.currentAssistantId,
+      store.currentTopicId,
+      query,
+      10
+    )
+    conversationMemorySearchResults.value = results
+  } catch (e) {
+    console.error('搜索对话记忆库失败:', e)
+    app.showToast('搜索失败', 'error')
+  } finally {
+    isConversationMemoryLoading.value = false
+  }
+}
+
+// 清除搜索结果
+function clearConversationMemorySearch() {
+  conversationMemorySearchResults.value = null
+}
+
+// 编辑对话记忆
+async function handleConversationMemoryEdit(id: string, data: { summary?: string, content?: string, memory_type?: string }) {
+  if (!store.currentAssistantId || !store.currentTopicId) return
+  
+  try {
+    await assistantsApi.updateConversationMemory(
+      store.currentAssistantId,
+      store.currentTopicId,
+      id,
+      data
+    )
+    app.showToast('记忆已更新', 'success')
+    await loadConversationMemory()
+  } catch (e) {
+    console.error('更新对话记忆失败:', e)
+    app.showToast('更新失败', 'error')
+  }
+}
+
+// 删除对话记忆
+async function handleConversationMemoryDelete(id: string) {
+  if (!store.currentAssistantId || !store.currentTopicId) return
+  
+  if (!confirm('确定要删除这条记忆吗？')) return
+  
+  try {
+    await assistantsApi.deleteConversationMemory(
+      store.currentAssistantId,
+      store.currentTopicId,
+      id
+    )
+    app.showToast('记忆已删除', 'success')
+    await loadConversationMemory()
+  } catch (e) {
+    console.error('删除对话记忆失败:', e)
+    app.showToast('删除失败', 'error')
+  }
 }
 
 async function sendMessage(content: string) {
@@ -596,6 +693,19 @@ async function handleRegenerate(index: number) {
           @edit="handleShortTermEdit"
           @delete="deleteShortTerm"
           @toggle-expand="toggleShouldExpand"
+        />
+        
+        <!-- 对话记忆库面板 -->
+        <ConversationMemoryPanel
+          v-show="activeTab === 'conversationMemory'"
+          :entries="conversationMemory"
+          :is-loading="isConversationMemoryLoading"
+          :search-results="conversationMemorySearchResults"
+          @search="handleConversationMemorySearch"
+          @clear-search="clearConversationMemorySearch"
+          @edit="handleConversationMemoryEdit"
+          @delete="handleConversationMemoryDelete"
+          @refresh="loadConversationMemory"
         />
       </MemoryPanel>
     </div>

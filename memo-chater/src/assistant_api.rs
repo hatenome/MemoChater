@@ -17,10 +17,13 @@ use crate::assistant::{
     TopicId, TopicMeta, TopicSummary, TopicType, ModelConfig, AssistantRolesConfig, MemoryConfig,
 };
 use crate::pipeline::PipelineConfig;
+use crate::pipeline::processors::short_term_vectorizer::{ShortTermVectorFile, VectorizedMemory};
+use crate::ai::AiClient;
 
 /// API 状态
 pub struct AssistantApiState {
     pub manager: Arc<AssistantManager>,
+    pub ai_client: Arc<AiClient>,
 }
 
 /// 创建助手路由
@@ -37,6 +40,10 @@ pub fn assistant_routes(state: Arc<AssistantApiState>) -> Router {
         // 消息操作
         .route("/assistants/:assistant_id/topics/:topic_id/messages/:index", put(update_message).delete(delete_message))
         .route("/assistants/:assistant_id/topics/:topic_id/branch", post(create_branch_topic))
+        // 对话记忆库
+        .route("/assistants/:assistant_id/topics/:topic_id/conversation-memory", get(list_conversation_memory))
+        .route("/assistants/:assistant_id/topics/:topic_id/conversation-memory/search", post(search_conversation_memory))
+        .route("/assistants/:assistant_id/topics/:topic_id/conversation-memory/:memory_id", put(update_conversation_memory).delete(delete_conversation_memory))
         .with_state(state)
 }
 
@@ -369,4 +376,273 @@ async fn create_branch_topic(
             Ok(Json(ApiResponse::err(e.to_string())))
         }
     }
+}
+
+// ==================== 对话记忆库 API ====================
+
+/// 对话记忆库列表响应
+#[derive(Debug, Serialize)]
+struct ConversationMemoryListResponse {
+    memories: Vec<VectorizedMemory>,
+    total: usize,
+    embedding_model: String,
+}
+
+/// 搜索请求
+#[derive(Debug, Deserialize)]
+struct SearchConversationMemoryRequest {
+    query: String,
+    #[serde(default = "default_top_k")]
+    top_k: usize,
+}
+
+fn default_top_k() -> usize {
+    10
+}
+
+/// 更新记忆请求
+#[derive(Debug, Deserialize)]
+struct UpdateConversationMemoryRequest {
+    summary: Option<String>,
+    content: Option<String>,
+    memory_type: Option<String>,
+}
+
+/// 搜索结果
+#[derive(Debug, Serialize)]
+struct SearchResult {
+    memory: VectorizedMemory,
+    score: f32,
+}
+
+/// 获取向量文件路径
+fn get_vector_file_path(data_dir: &str, assistant_id: &str, topic_id: &str) -> std::path::PathBuf {
+    std::path::PathBuf::from(data_dir)
+        .join("assistants")
+        .join(assistant_id)
+        .join("topics")
+        .join(topic_id)
+        .join("short_term_vectors.json")
+}
+
+/// 列出对话记忆库
+async fn list_conversation_memory(
+    State(state): State<Arc<AssistantApiState>>,
+    Path((assistant_id, topic_id)): Path<(String, String)>,
+) -> Result<Json<ApiResponse<ConversationMemoryListResponse>>, StatusCode> {
+    let data_dir = state.manager.data_dir();
+    let path = get_vector_file_path(&data_dir, &assistant_id, &topic_id);
+    
+    if !path.exists() {
+        return Ok(Json(ApiResponse::ok(ConversationMemoryListResponse {
+            memories: vec![],
+            total: 0,
+            embedding_model: String::new(),
+        })));
+    }
+    
+    match tokio::fs::read_to_string(&path).await {
+        Ok(content) => {
+            match serde_json::from_str::<ShortTermVectorFile>(&content) {
+                Ok(file) => {
+                    let total = file.vectors.len();
+                    Ok(Json(ApiResponse::ok(ConversationMemoryListResponse {
+                        memories: file.vectors,
+                        total,
+                        embedding_model: file.metadata.embedding_model,
+                    })))
+                }
+                Err(e) => {
+                    tracing::error!("解析向量文件失败: {}", e);
+                    Ok(Json(ApiResponse::err(format!("解析文件失败: {}", e))))
+                }
+            }
+        }
+        Err(e) => {
+            tracing::error!("读取向量文件失败: {}", e);
+            Ok(Json(ApiResponse::err(format!("读取文件失败: {}", e))))
+        }
+    }
+}
+
+/// 搜索对话记忆库
+async fn search_conversation_memory(
+    State(state): State<Arc<AssistantApiState>>,
+    Path((assistant_id, topic_id)): Path<(String, String)>,
+    Json(req): Json<SearchConversationMemoryRequest>,
+) -> Result<Json<ApiResponse<Vec<SearchResult>>>, StatusCode> {
+    let data_dir = state.manager.data_dir();
+    let path = get_vector_file_path(&data_dir, &assistant_id, &topic_id);
+    
+    if !path.exists() {
+        return Ok(Json(ApiResponse::ok(vec![])));
+    }
+    
+    // 读取向量文件
+    let content = match tokio::fs::read_to_string(&path).await {
+        Ok(c) => c,
+        Err(e) => return Ok(Json(ApiResponse::err(format!("读取文件失败: {}", e)))),
+    };
+    
+    let file: ShortTermVectorFile = match serde_json::from_str(&content) {
+        Ok(f) => f,
+        Err(e) => return Ok(Json(ApiResponse::err(format!("解析文件失败: {}", e)))),
+    };
+    
+    if file.vectors.is_empty() {
+        return Ok(Json(ApiResponse::ok(vec![])));
+    }
+    
+    // 获取AI客户端生成embedding
+    let query_embedding = match state.ai_client.embedding(&req.query).await {
+        Ok(e) => e,
+        Err(e) => return Ok(Json(ApiResponse::err(format!("生成embedding失败: {}", e)))),
+    };
+    
+    // 计算余弦相似度并排序
+    let mut results: Vec<SearchResult> = file.vectors
+        .into_iter()
+        .map(|mem| {
+            let score = cosine_similarity(&query_embedding, &mem.embedding);
+            SearchResult { memory: mem, score }
+        })
+        .collect();
+    
+    results.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    results.truncate(req.top_k);
+    
+    Ok(Json(ApiResponse::ok(results)))
+}
+
+/// 更新对话记忆
+async fn update_conversation_memory(
+    State(state): State<Arc<AssistantApiState>>,
+    Path((assistant_id, topic_id, memory_id)): Path<(String, String, String)>,
+    Json(req): Json<UpdateConversationMemoryRequest>,
+) -> Result<Json<ApiResponse<VectorizedMemory>>, StatusCode> {
+    let data_dir = state.manager.data_dir();
+    let path = get_vector_file_path(&data_dir, &assistant_id, &topic_id);
+    
+    if !path.exists() {
+        return Ok(Json(ApiResponse::err("向量文件不存在")));
+    }
+    
+    // 读取文件
+    let content = match tokio::fs::read_to_string(&path).await {
+        Ok(c) => c,
+        Err(e) => return Ok(Json(ApiResponse::err(format!("读取文件失败: {}", e)))),
+    };
+    
+    let mut file: ShortTermVectorFile = match serde_json::from_str(&content) {
+        Ok(f) => f,
+        Err(e) => return Ok(Json(ApiResponse::err(format!("解析文件失败: {}", e)))),
+    };
+    
+    // 查找并更新记忆
+    let memory = match file.vectors.iter_mut().find(|m| m.id == memory_id) {
+        Some(m) => m,
+        None => return Ok(Json(ApiResponse::err("记忆不存在"))),
+    };
+    
+    let mut need_reembed = false;
+    
+    if let Some(summary) = req.summary {
+        memory.summary = summary;
+        need_reembed = true;
+    }
+    if let Some(content) = req.content {
+        memory.content = content;
+    }
+    if let Some(memory_type) = req.memory_type {
+        memory.memory_type = memory_type;
+    }
+    
+    // 如果summary变了，重新生成embedding
+    if need_reembed {
+        match state.ai_client.embedding(&memory.summary).await {
+            Ok(embedding) => memory.embedding = embedding,
+            Err(e) => return Ok(Json(ApiResponse::err(format!("重新生成embedding失败: {}", e)))),
+        }
+    }
+    
+    let updated_memory = memory.clone();
+    
+    // 更新元数据时间
+    file.metadata.last_updated = chrono::Utc::now().to_rfc3339();
+    
+    // 保存文件
+    let json = match serde_json::to_string_pretty(&file) {
+        Ok(j) => j,
+        Err(e) => return Ok(Json(ApiResponse::err(format!("序列化失败: {}", e)))),
+    };
+    
+    if let Err(e) = tokio::fs::write(&path, json).await {
+        return Ok(Json(ApiResponse::err(format!("写入文件失败: {}", e))));
+    }
+    
+    Ok(Json(ApiResponse::ok(updated_memory)))
+}
+
+/// 删除对话记忆
+async fn delete_conversation_memory(
+    State(state): State<Arc<AssistantApiState>>,
+    Path((assistant_id, topic_id, memory_id)): Path<(String, String, String)>,
+) -> Result<Json<ApiResponse<()>>, StatusCode> {
+    let data_dir = state.manager.data_dir();
+    let path = get_vector_file_path(&data_dir, &assistant_id, &topic_id);
+    
+    if !path.exists() {
+        return Ok(Json(ApiResponse::err("向量文件不存在")));
+    }
+    
+    // 读取文件
+    let content = match tokio::fs::read_to_string(&path).await {
+        Ok(c) => c,
+        Err(e) => return Ok(Json(ApiResponse::err(format!("读取文件失败: {}", e)))),
+    };
+    
+    let mut file: ShortTermVectorFile = match serde_json::from_str(&content) {
+        Ok(f) => f,
+        Err(e) => return Ok(Json(ApiResponse::err(format!("解析文件失败: {}", e)))),
+    };
+    
+    // 删除记忆
+    let original_len = file.vectors.len();
+    file.vectors.retain(|m| m.id != memory_id);
+    
+    if file.vectors.len() == original_len {
+        return Ok(Json(ApiResponse::err("记忆不存在")));
+    }
+    
+    // 更新元数据时间
+    file.metadata.last_updated = chrono::Utc::now().to_rfc3339();
+    
+    // 保存文件
+    let json = match serde_json::to_string_pretty(&file) {
+        Ok(j) => j,
+        Err(e) => return Ok(Json(ApiResponse::err(format!("序列化失败: {}", e)))),
+    };
+    
+    if let Err(e) = tokio::fs::write(&path, json).await {
+        return Ok(Json(ApiResponse::err(format!("写入文件失败: {}", e))));
+    }
+    
+    Ok(Json(ApiResponse::ok(())))
+}
+
+/// 计算余弦相似度
+fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
+    if a.len() != b.len() || a.is_empty() {
+        return 0.0;
+    }
+    
+    let dot: f32 = a.iter().zip(b.iter()).map(|(x, y)| x * y).sum();
+    let norm_a: f32 = a.iter().map(|x| x * x).sum::<f32>().sqrt();
+    let norm_b: f32 = b.iter().map(|x| x * x).sum::<f32>().sqrt();
+    
+    if norm_a == 0.0 || norm_b == 0.0 {
+        return 0.0;
+    }
+    
+    dot / (norm_a * norm_b)
 }

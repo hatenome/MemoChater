@@ -1,5 +1,5 @@
 import { api } from './client'
-import type { AssistantSummary, AssistantConfig, TopicSummary, TopicMeta, TopicType, ChatMessage, PacketMemoryData, ThinkingEntry, ShortTermMemoryEntry } from '@/types'
+import type { AssistantSummary, AssistantConfig, TopicSummary, TopicMeta, TopicType, ChatMessage, PacketMemoryData, ThinkingEntry, ShortTermMemoryEntry, VectorMemoryEntry } from '@/types'
 
 export const assistantsApi = {
   // 助手管理
@@ -57,4 +57,34 @@ export const assistantsApi = {
   
   updateShortTermMemory: (assistantId: string, topicId: string, shortTermMemory: ShortTermMemoryEntry[]) =>
     api.put<PacketMemoryData>(`/assistants/${assistantId}/topics/${topicId}/packet/short-term`, { short_term_memory: shortTermMemory }),
+
+  // ============ 对话记忆库 API ============
+  
+  /** 获取对话记忆库列表 */
+  listConversationMemory: (assistantId: string, topicId: string) =>
+    api.get<{ memories: VectorMemoryEntry[], total: number, embedding_model: string }>(
+      `/assistants/${assistantId}/topics/${topicId}/conversation-memory`
+    ),
+  
+  /** 搜索对话记忆库 */
+  searchConversationMemory: (assistantId: string, topicId: string, query: string, topK = 10) =>
+    api.post<{ memory: VectorMemoryEntry, score: number }[]>(
+      `/assistants/${assistantId}/topics/${topicId}/conversation-memory/search`,
+      { query, top_k: topK }
+    ),
+  
+  /** 更新对话记忆 */
+  updateConversationMemory: (assistantId: string, topicId: string, memoryId: string, data: {
+    summary?: string
+    content?: string
+    memory_type?: string
+  }) =>
+    api.put<VectorMemoryEntry>(
+      `/assistants/${assistantId}/topics/${topicId}/conversation-memory/${memoryId}`,
+      data
+    ),
+  
+  /** 删除对话记忆 */
+  deleteConversationMemory: (assistantId: string, topicId: string, memoryId: string) =>
+    api.delete<void>(`/assistants/${assistantId}/topics/${topicId}/conversation-memory/${memoryId}`),
 }

@@ -164,3 +164,49 @@ export interface PacketMemoryData {
   /** 最终发送给 AI 的 messages（调试用） */
   last_request_messages: ChatMessage[]
 }
+
+// ============ 对话记忆库（向量库）相关类型 ============
+
+/** 向量记忆条目 - 对应 short_term_vectors.json 中的数据 */
+export interface VectorMemoryEntry {
+  /** 唯一标识符 */
+  id: string
+  /** 概述/标题 */
+  summary: string
+  /** 详细内容 */
+  content: string
+  /** 记忆类型 */
+  memory_type: string
+  /** 置信度 0.0 - 1.0 */
+  confidence: number
+  /** 来源 */
+  source: string
+  /** 创建时间 */
+  timestamp: string
+  /** 向量嵌入（可选，前端通常不需要） */
+  embedding?: number[]
+}
+
+/** 向量搜索结果 */
+export interface VectorSearchResult {
+  /** 记忆条目 */
+  entry: VectorMemoryEntry
+  /** 相似度分数 0.0 - 1.0 */
+  score: number
+}
+
+/** 向量记忆库列表响应 */
+export interface VectorMemoryListResponse {
+  /** 记忆条目列表 */
+  entries: VectorMemoryEntry[]
+  /** 总数 */
+  total: number
+}
+
+/** 向量搜索响应 */
+export interface VectorSearchResponse {
+  /** 搜索结果 */
+  results: VectorSearchResult[]
+  /** 查询文本 */
+  query: string
+}

@@ -33,15 +33,24 @@ pub struct AssistantManager {
     storage: AssistantStorage,
     /// 缓存的助手配置
     config_cache: RwLock<HashMap<AssistantId, AssistantConfig>>,
+    /// 数据目录路径
+    data_dir: String,
 }
 
 impl AssistantManager {
     /// 创建新的管理器
     pub fn new(data_dir: impl AsRef<Path>) -> Self {
+        let data_dir_str = data_dir.as_ref().to_string_lossy().to_string();
         Self {
-            storage: AssistantStorage::new(data_dir),
+            storage: AssistantStorage::new(&data_dir_str),
             config_cache: RwLock::new(HashMap::new()),
+            data_dir: data_dir_str,
         }
+    }
+    
+    /// 获取数据目录路径
+    pub fn data_dir(&self) -> &str {
+        &self.data_dir
     }
     
     /// 初始化（确保目录存在）

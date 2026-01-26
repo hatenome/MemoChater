@@ -8,7 +8,7 @@ mod content_chunker;
 mod short_term_assembler;
 mod context_cleaner;
 mod short_term_expander;
-mod short_term_vectorizer;
+pub mod short_term_vectorizer;
 
 pub use history_simplifier::HistorySimplifier;
 pub use subconscious_processor::SubconsciousProcessor;

@@ -116,7 +116,7 @@ async fn main() {
     
     // 创建上下文工厂
     let context_factory = Arc::new(ProcessorContextFactory::new(
-        ai_client_arc,
+        ai_client_arc.clone(),
         global_config,
         assistant_manager.clone(),
         memory_manager.clone(),
@@ -144,6 +144,7 @@ async fn main() {
     // 助手API状态
     let assistant_state = Arc::new(AssistantApiState {
         manager: assistant_manager,
+        ai_client: ai_client_arc.clone(),
     });
 
     // CORS 配置
