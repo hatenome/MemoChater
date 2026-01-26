@@ -7,6 +7,9 @@ import ChatMessage from '@/components/ChatMessage.vue'
 import ChatInput from '@/components/ChatInput.vue'
 import ToolCallBlock from '@/components/ToolCallBlock.vue'
 import ToolResultBlock from '@/components/ToolResultBlock.vue'
+import MemoryPanel from '@/components/MemoryPanel.vue'
+import ThinkingPanel from '@/components/panels/ThinkingPanel.vue'
+import ShortTermPanel from '@/components/panels/ShortTermPanel.vue'
 import { parseVCPContent, hasVCPBlocks } from '@/utils/vcpParser'
 import type { ThinkingEntry, ShortTermMemoryEntry, ConversationTurn } from '@/types'
 
@@ -45,6 +48,12 @@ const hasContext = computed(() => store.currentAssistantId && store.currentTopic
 
 // 判断当前话题是否为记忆话题
 const isMemoryTopic = computed(() => store.currentTopic?.topic_type === 'memory')
+
+// 标签页配置
+const memoryTabs = [
+  { id: 'thinking', icon: '💭', label: '思考池' },
+  { id: 'shortTerm', icon: '🧠', label: '短期记忆' },
+]
 
 // 过滤系统消息
 const displayMessages = computed(() => store.messages.filter(m => m.role !== 'system'))
@@ -260,6 +269,23 @@ function addShortTerm() {
 // 切换短期记忆的展开标记
 function toggleShouldExpand(index: number) {
   shortTermMemory.value[index].should_expand = !shortTermMemory.value[index].should_expand
+  saveShortTermMemory()
+}
+
+// 处理思考池编辑（来自子组件）
+function handleThinkingEdit(index: number, content: string) {
+  thinkingPool.value[index].content = content
+  saveThinkingPool()
+}
+
+// 处理短期记忆编辑（来自子组件）
+function handleShortTermEdit(index: number, data: Partial<typeof shortTermMemory.value[0]>) {
+  const mem = shortTermMemory.value[index]
+  if (data.summary !== undefined) mem.summary = data.summary
+  if (data.content !== undefined) mem.content = data.content
+  if (data.memory_type !== undefined) mem.memory_type = data.memory_type
+  if (data.confidence !== undefined) mem.confidence = data.confidence
+  if (data.timestamp !== undefined) mem.timestamp = data.timestamp
   saveShortTermMemory()
 }
 
@@ -550,218 +576,28 @@ async function handleRegenerate(index: number) {
       v-if="hasContext && isMemoryTopic"
       class="w-80 border-l border-dark-700 bg-dark-900 flex flex-col"
     >
-      <!-- 思考池 -->
-      <div class="flex-1 flex flex-col border-b border-dark-700 min-h-0">
-        <div class="flex items-center justify-between px-4 py-3 border-b border-dark-700">
-          <h3 class="text-sm font-medium text-primary-400">💭 思考池</h3>
-          <button 
-            @click="addThinking"
-            class="text-xs px-2 py-1 bg-dark-700 hover:bg-dark-600 rounded"
-          >
-            + 添加
-          </button>
-        </div>
-        <div class="flex-1 overflow-y-auto p-3 space-y-2">
-          <div v-if="isLoadingMemory" class="text-center text-dark-500 text-sm py-4">
-            加载中...
-          </div>
-          <div v-else-if="thinkingPool.length === 0" class="text-center text-dark-500 text-sm py-4">
-            暂无思考内容
-          </div>
-          <div 
-            v-else
-            v-for="(entry, index) in thinkingPool" 
-            :key="index"
-            class="bg-dark-800 rounded p-2 text-sm group relative"
-          >
-            <!-- 编辑模式 -->
-            <div v-if="editingThinkingIndex === index">
-              <textarea
-                v-model="editThinkingContent"
-                class="w-full bg-dark-700 border border-dark-600 rounded p-2 text-sm resize-none"
-                rows="3"
-                @keydown.ctrl.enter="saveEditThinking"
-                @keydown.escape="cancelEditThinking"
-              ></textarea>
-              <div class="flex justify-end gap-2 mt-2">
-                <button 
-                  @click="cancelEditThinking"
-                  class="text-xs px-2 py-1 bg-dark-700 hover:bg-dark-600 rounded"
-                >
-                  取消
-                </button>
-                <button 
-                  @click="saveEditThinking"
-                  class="text-xs px-2 py-1 bg-primary-600 hover:bg-primary-700 rounded"
-                >
-                  保存
-                </button>
-              </div>
-            </div>
-            <!-- 显示模式 -->
-            <div v-else>
-              <p class="text-dark-300 whitespace-pre-wrap">{{ entry.content }}</p>
-              <div class="flex items-center justify-between mt-1">
-                <span class="text-xs text-dark-500">{{ entry.source }}</span>
-                <div class="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                  <button 
-                    @click="startEditThinking(index)"
-                    class="text-xs px-1.5 py-0.5 bg-dark-700 hover:bg-dark-600 rounded"
-                  >
-                    编辑
-                  </button>
-                  <button 
-                    @click="deleteThinking(index)"
-                    class="text-xs px-1.5 py-0.5 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded"
-                  >
-                    删除
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 短期记忆池 -->
-      <div class="flex-1 flex flex-col min-h-0">
-        <div class="flex items-center justify-between px-4 py-3 border-b border-dark-700">
-          <h3 class="text-sm font-medium text-green-400">🧠 短期记忆</h3>
-          <button 
-            @click="addShortTerm"
-            class="text-xs px-2 py-1 bg-dark-700 hover:bg-dark-600 rounded"
-          >
-            + 添加
-          </button>
-        </div>
-        <div class="flex-1 overflow-y-auto p-3 space-y-2">
-          <div v-if="isLoadingMemory" class="text-center text-dark-500 text-sm py-4">
-            加载中...
-          </div>
-          <div v-else-if="shortTermMemory.length === 0" class="text-center text-dark-500 text-sm py-4">
-            暂无短期记忆
-          </div>
-          <div 
-            v-else
-            v-for="(mem, index) in shortTermMemory" 
-            :key="mem.id"
-            class="bg-dark-800 rounded p-2 text-sm group relative"
-          >
-            <!-- 编辑模式 -->
-            <div v-if="editingShortTermIndex === index" class="space-y-2">
-              <!-- 概述 -->
-              <input
-                v-model="editShortTermSummary"
-                class="w-full bg-dark-700 border border-dark-600 rounded px-2 py-1 text-sm"
-                placeholder="概述/标题"
-                @keydown.escape="cancelEditShortTerm"
-              />
-              <!-- 类型 -->
-              <select
-                v-model="editShortTermType"
-                class="w-full bg-dark-700 border border-dark-600 rounded px-2 py-1 text-sm"
-              >
-                <option value="fact">事实 (fact)</option>
-                <option value="event">事件 (event)</option>
-                <option value="preference">偏好 (preference)</option>
-                <option value="knowledge">知识 (knowledge)</option>
-                <option value="task">任务 (task)</option>
-                <option value="other">其他 (other)</option>
-              </select>
-              <!-- 内容 -->
-              <textarea
-                v-model="editShortTermContent"
-                class="w-full bg-dark-700 border border-dark-600 rounded p-2 text-sm resize-none"
-                rows="3"
-                placeholder="详细内容"
-                @keydown.ctrl.enter="saveEditShortTerm"
-                @keydown.escape="cancelEditShortTerm"
-              ></textarea>
-              <!-- 置信度和时间 -->
-              <div class="flex gap-2">
-                <div class="flex-1">
-                  <label class="text-xs text-dark-400 mb-1 block">置信度</label>
-                  <input
-                    v-model.number="editShortTermConfidence"
-                    type="number"
-                    min="0"
-                    max="1"
-                    step="0.1"
-                    class="w-full bg-dark-700 border border-dark-600 rounded px-2 py-1 text-sm"
-                  />
-                </div>
-                <div class="flex-1">
-                  <label class="text-xs text-dark-400 mb-1 block">时间</label>
-                  <input
-                    v-model="editShortTermTimestamp"
-                    type="datetime-local"
-                    class="w-full bg-dark-700 border border-dark-600 rounded px-2 py-1 text-sm"
-                  />
-                </div>
-              </div>
-              <div class="flex justify-end gap-2">
-                <button 
-                  @click="cancelEditShortTerm"
-                  class="text-xs px-2 py-1 bg-dark-700 hover:bg-dark-600 rounded"
-                >
-                  取消
-                </button>
-                <button 
-                  @click="saveEditShortTerm"
-                  class="text-xs px-2 py-1 bg-primary-600 hover:bg-primary-700 rounded"
-                >
-                  保存
-                </button>
-              </div>
-            </div>
-            <!-- 显示模式 -->
-            <div v-else>
-              <!-- 标题和类型 -->
-              <div class="flex items-center gap-2 mb-1">
-                <span class="font-medium text-dark-200">{{ mem.summary }}</span>
-                <span class="text-xs px-1.5 py-0.5 bg-primary-600/20 text-primary-400 rounded">
-                  {{ mem.memory_type }}
-                </span>
-                <!-- 展开标记 -->
-                <button
-                  @click="toggleShouldExpand(index)"
-                  class="text-xs px-1.5 py-0.5 rounded transition-colors"
-                  :class="mem.should_expand 
-                    ? 'bg-green-600/30 text-green-400 hover:bg-green-600/50' 
-                    : 'bg-dark-700 text-dark-400 hover:bg-dark-600'"
-                  :title="mem.should_expand ? '点击取消展开' : '点击标记为展开'"
-                >
-                  {{ mem.should_expand ? '📖 展开' : '📕 折叠' }}
-                </button>
-              </div>
-              <!-- 内容（预览，限100字符） -->
-              <p class="text-dark-400 text-xs whitespace-pre-wrap">{{ truncateText(mem.content, 100) }}</p>
-              <!-- 底部信息 -->
-              <div class="flex items-center justify-between mt-2">
-                <div class="flex items-center gap-3 text-xs text-dark-500">
-                  <span>相关性: {{ (mem.relevance * 100).toFixed(0) }}%</span>
-                  <span>置信度: {{ (mem.confidence * 100).toFixed(0) }}%</span>
-                  <span>{{ formatTime(mem.timestamp) }}</span>
-                </div>
-                <div class="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                  <button 
-                    @click="startEditShortTerm(index)"
-                    class="text-xs px-1.5 py-0.5 bg-dark-700 hover:bg-dark-600 rounded"
-                  >
-                    编辑
-                  </button>
-                  <button 
-                    @click="deleteShortTerm(index)"
-                    class="text-xs px-1.5 py-0.5 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded"
-                  >
-                    删除
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <MemoryPanel :tabs="memoryTabs" v-slot="{ activeTab }">
+        <!-- 思考池面板 -->
+        <ThinkingPanel
+          v-show="activeTab === 'thinking'"
+          :entries="thinkingPool"
+          :is-loading="isLoadingMemory"
+          @add="addThinking"
+          @edit="handleThinkingEdit"
+          @delete="deleteThinking"
+        />
+        
+        <!-- 短期记忆面板 -->
+        <ShortTermPanel
+          v-show="activeTab === 'shortTerm'"
+          :entries="shortTermMemory"
+          :is-loading="isLoadingMemory"
+          @add="addShortTerm"
+          @edit="handleShortTermEdit"
+          @delete="deleteShortTerm"
+          @toggle-expand="toggleShouldExpand"
+        />
+      </MemoryPanel>
     </div>
 
     <!-- 请求体查看模态框 -->

@@ -8,6 +8,7 @@ mod content_chunker;
 mod short_term_assembler;
 mod context_cleaner;
 mod short_term_expander;
+mod short_term_vectorizer;
 
 pub use history_simplifier::HistorySimplifier;
 pub use subconscious_processor::SubconsciousProcessor;
@@ -15,6 +16,7 @@ pub use content_chunker::ContentChunker;
 pub use short_term_assembler::ShortTermAssembler;
 pub use context_cleaner::ContextCleaner;
 pub use short_term_expander::ShortTermExpander;
+pub use short_term_vectorizer::ShortTermVectorizer;
 
 use std::sync::Arc;
 use super::processor::Processor;
@@ -26,7 +28,8 @@ pub fn create_all_processors() -> Vec<Arc<dyn Processor>> {
         Arc::new(SubconsciousProcessor::new()),
         Arc::new(ContentChunker::new()),
         Arc::new(ShortTermAssembler::new()),
-        Arc::new(ContextCleaner::new()),
+Arc::new(ContextCleaner::new()),
         Arc::new(ShortTermExpander::new()),
+        Arc::new(ShortTermVectorizer::new()),
     ]
 }

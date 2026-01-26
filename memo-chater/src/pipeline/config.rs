@@ -71,6 +71,7 @@ fn default_after_ai_response() -> Vec<ProcessorEntry> {
     vec![
         ProcessorEntry::with_description("SubconsciousProcessor", "处理潜意识层面的信息"),
         ProcessorEntry::with_description("ContentChunker", "将内容切分成适合存储的块"),
+        ProcessorEntry::with_description("ShortTermVectorizer", "将短期记忆向量化并存储到话题文件"),
         ProcessorEntry::with_description("MemoryCommitter", "将记忆块提交到存储系统"),
     ]
 }
