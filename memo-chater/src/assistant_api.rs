@@ -43,6 +43,7 @@ pub fn assistant_routes(state: Arc<AssistantApiState>) -> Router {
         // 对话记忆库
         .route("/assistants/:assistant_id/topics/:topic_id/conversation-memory", get(list_conversation_memory))
         .route("/assistants/:assistant_id/topics/:topic_id/conversation-memory/search", post(search_conversation_memory))
+        .route("/assistants/:assistant_id/topics/:topic_id/conversation-memory/rebuild", post(rebuild_conversation_memory))
         .route("/assistants/:assistant_id/topics/:topic_id/conversation-memory/:memory_id", put(update_conversation_memory).delete(delete_conversation_memory))
         .with_state(state)
 }
@@ -406,6 +407,8 @@ struct UpdateConversationMemoryRequest {
     summary: Option<String>,
     content: Option<String>,
     memory_type: Option<String>,
+    confidence: Option<f32>,
+    source: Option<String>,
 }
 
 /// 搜索结果
@@ -493,17 +496,24 @@ async fn search_conversation_memory(
         return Ok(Json(ApiResponse::ok(vec![])));
     }
     
-    // 获取AI客户端生成embedding
-    let query_embedding = match state.ai_client.embedding(&req.query).await {
+    // 使用向量文件中记录的模型生成embedding
+    let embedding_model = &file.metadata.embedding_model;
+    let query_embedding = match state.ai_client.embedding_with_model(&req.query, Some(embedding_model)).await {
         Ok(e) => e,
         Err(e) => return Ok(Json(ApiResponse::err(format!("生成embedding失败: {}", e)))),
     };
     
-    // 计算余弦相似度并排序
+    // 计算加权余弦相似度并排序
+    // 权重: summary 0.4, content 0.6
+    const SUMMARY_WEIGHT: f32 = 0.4;
+    const CONTENT_WEIGHT: f32 = 0.6;
+    
     let mut results: Vec<SearchResult> = file.vectors
         .into_iter()
         .map(|mem| {
-            let score = cosine_similarity(&query_embedding, &mem.embedding);
+            let summary_score = cosine_similarity(&query_embedding, &mem.summary_embedding);
+            let content_score = cosine_similarity(&query_embedding, &mem.content_embedding);
+            let score = SUMMARY_WEIGHT * summary_score + CONTENT_WEIGHT * content_score;
             SearchResult { memory: mem, score }
         })
         .collect();
@@ -552,16 +562,28 @@ async fn update_conversation_memory(
     }
     if let Some(content) = req.content {
         memory.content = content;
+        need_reembed = true;
     }
     if let Some(memory_type) = req.memory_type {
         memory.memory_type = memory_type;
     }
+    if let Some(confidence) = req.confidence {
+        memory.confidence = confidence;
+    }
+    if let Some(source) = req.source {
+        memory.source = source;
+    }
     
-    // 如果summary变了，重新生成embedding
+    // 如果summary或content变了，重新生成双向量
     if need_reembed {
-        match state.ai_client.embedding(&memory.summary).await {
-            Ok(embedding) => memory.embedding = embedding,
-            Err(e) => return Ok(Json(ApiResponse::err(format!("重新生成embedding失败: {}", e)))),
+        let embedding_model = &file.metadata.embedding_model;
+        match state.ai_client.embedding_with_model(&memory.summary, Some(embedding_model)).await {
+            Ok(e) => memory.summary_embedding = e,
+            Err(e) => return Ok(Json(ApiResponse::err(format!("重新生成summary embedding失败: {}", e)))),
+        }
+        match state.ai_client.embedding_with_model(&memory.content, Some(embedding_model)).await {
+            Ok(e) => memory.content_embedding = e,
+            Err(e) => return Ok(Json(ApiResponse::err(format!("重新生成content embedding失败: {}", e)))),
         }
     }
     
@@ -645,4 +667,142 @@ fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
     }
     
     dot / (norm_a * norm_b)
+}
+
+// ==================== 重建对话向量库 ====================
+
+/// 重建响应
+#[derive(Debug, Serialize)]
+struct RebuildConversationMemoryResponse {
+    success: bool,
+    rebuilt: usize,
+    total: usize,
+    embedding_model: String,
+}
+
+/// 重建对话记忆库（从 packet 的 short_term_memory 重新生成向量）
+async fn rebuild_conversation_memory(
+    State(state): State<Arc<AssistantApiState>>,
+    Path((assistant_id, topic_id)): Path<(String, String)>,
+) -> Result<Json<ApiResponse<RebuildConversationMemoryResponse>>, StatusCode> {
+    // 获取 data_dir
+    let data_dir = state.manager.data_dir();
+    
+    // 1. 读取 conversation_state.json (packet)
+    let packet_path = std::path::PathBuf::from(&data_dir)
+        .join("assistants")
+        .join(&assistant_id)
+        .join("topics")
+        .join(&topic_id)
+        .join("conversation_state.json");
+    
+    let packet_content = match tokio::fs::read_to_string(&packet_path).await {
+        Ok(c) => c,
+        Err(e) => {
+            return Ok(Json(ApiResponse::err(format!("读取 packet 失败: {}", e))));
+        }
+    };
+    
+    let packet: crate::pipeline::ConversationPacket = match serde_json::from_str(&packet_content) {
+        Ok(p) => p,
+        Err(e) => {
+            return Ok(Json(ApiResponse::err(format!("解析 packet 失败: {}", e))));
+        }
+    };
+    
+    let short_term_memories = packet.short_term_memory;
+    let total = short_term_memories.len();
+    
+    if total == 0 {
+        return Ok(Json(ApiResponse::ok(RebuildConversationMemoryResponse {
+            success: true,
+            rebuilt: 0,
+            total: 0,
+            embedding_model: "none".to_string(),
+        })));
+    }
+    
+    // 2. 获取 embedding 模型
+    let embedding_model = packet.embedding_model.unwrap_or_else(|| "text-embedding-3-small".to_string());
+    
+    // 3. 为每条记忆生成 embedding
+    let mut vectorized_memories = Vec::new();
+    let mut rebuilt_count = 0;
+    
+    for memory in &short_term_memories {
+        let source_str = match &memory.source {
+            crate::types::MemorySource::LongTermRetrieval => "LongTermRetrieval",
+            crate::types::MemorySource::CurrentConversation => "CurrentConversation",
+            crate::types::MemorySource::ToolResult => "ToolResult",
+        };
+        
+        // 生成 summary embedding
+        let summary_embedding = match state.ai_client.embedding_with_model(&memory.summary, Some(&embedding_model)).await {
+            Ok(e) => e,
+            Err(e) => {
+                tracing::warn!("生成 summary embedding 失败 (id={}): {}", memory.id, e);
+                continue;
+            }
+        };
+        
+        // 生成 content embedding
+        let content_embedding = match state.ai_client.embedding_with_model(&memory.content, Some(&embedding_model)).await {
+            Ok(e) => e,
+            Err(e) => {
+                tracing::warn!("生成 content embedding 失败 (id={}): {}", memory.id, e);
+                continue;
+            }
+        };
+        
+        vectorized_memories.push(VectorizedMemory {
+            id: memory.id.clone(),
+            summary: memory.summary.clone(),
+            content: memory.content.clone(),
+            memory_type: memory.memory_type.clone(),
+            source: source_str.to_string(),
+            timestamp: memory.timestamp.to_rfc3339(),
+            should_expand: memory.should_expand,
+            confidence: 1.0, // 新记忆默认置信度 1.0
+            summary_embedding,
+            content_embedding,
+        });
+        rebuilt_count += 1;
+    }
+    
+    // 4. 构建新的向量文件
+    let dimension = vectorized_memories.first().map(|v| v.summary_embedding.len()).unwrap_or(0);
+    let vector_file = ShortTermVectorFile {
+        vectors: vectorized_memories,
+        metadata: crate::pipeline::processors::short_term_vectorizer::VectorFileMetadata {
+            embedding_model: embedding_model.clone(),
+            dimension,
+            last_updated: chrono::Utc::now().to_rfc3339(),
+        },
+    };
+    
+    // 5. 写入向量文件
+    let vector_path = get_vector_file_path(&data_dir, &assistant_id, &topic_id);
+    
+    let json = match serde_json::to_string_pretty(&vector_file) {
+        Ok(j) => j,
+        Err(e) => {
+            return Ok(Json(ApiResponse::err(format!("序列化失败: {}", e))));
+        }
+    };
+    
+    if let Err(e) = tokio::fs::write(&vector_path, json).await {
+        return Ok(Json(ApiResponse::err(format!("写入向量文件失败: {}", e))));
+    }
+    
+    tracing::info!(
+        "重建对话向量库完成: assistant={}, topic={}, rebuilt={}/{}",
+        assistant_id, topic_id, rebuilt_count, total
+    );
+    
+    Ok(Json(ApiResponse::ok(RebuildConversationMemoryResponse {
+        success: true,
+        rebuilt: rebuilt_count,
+        total,
+        embedding_model,
+    })))
 }

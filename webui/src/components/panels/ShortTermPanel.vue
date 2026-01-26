@@ -20,7 +20,6 @@ const editingIndex = ref<number | null>(null)
 const editSummary = ref('')
 const editContent = ref('')
 const editType = ref('')
-const editConfidence = ref(1.0)
 const editTimestamp = ref('')
 
 function startEdit(index: number) {
@@ -29,7 +28,6 @@ function startEdit(index: number) {
   editSummary.value = mem.summary
   editContent.value = mem.content
   editType.value = mem.memory_type
-  editConfidence.value = mem.confidence
   editTimestamp.value = mem.timestamp.slice(0, 16)
 }
 
@@ -39,7 +37,6 @@ function saveEdit() {
       summary: editSummary.value,
       content: editContent.value,
       memory_type: editType.value,
-      confidence: editConfidence.value,
       timestamp: editTimestamp.value
     })
     editingIndex.value = null
@@ -124,26 +121,13 @@ function formatTime(timestamp: string): string {
             @keydown.ctrl.enter="saveEdit"
             @keydown.escape="cancelEdit"
           ></textarea>
-          <div class="flex gap-2">
-            <div class="flex-1">
-              <label class="text-xs text-dark-400 mb-1 block">置信度</label>
-              <input
-                v-model.number="editConfidence"
-                type="number"
-                min="0"
-                max="1"
-                step="0.1"
-                class="w-full bg-dark-700 border border-dark-600 rounded px-2 py-1 text-sm"
-              />
-            </div>
-            <div class="flex-1">
-              <label class="text-xs text-dark-400 mb-1 block">时间</label>
-              <input
-                v-model="editTimestamp"
-                type="datetime-local"
-                class="w-full bg-dark-700 border border-dark-600 rounded px-2 py-1 text-sm"
-              />
-            </div>
+          <div>
+            <label class="text-xs text-dark-400 mb-1 block">时间</label>
+            <input
+              v-model="editTimestamp"
+              type="datetime-local"
+              class="w-full bg-dark-700 border border-dark-600 rounded px-2 py-1 text-sm"
+            />
           </div>
           <div class="flex justify-end gap-2">
             <button 
@@ -181,8 +165,6 @@ function formatTime(timestamp: string): string {
           <p class="text-dark-400 text-xs whitespace-pre-wrap">{{ truncateText(mem.content, 100) }}</p>
           <div class="flex items-center justify-between mt-2">
             <div class="flex items-center gap-3 text-xs text-dark-500">
-              <span>相关性: {{ (mem.relevance * 100).toFixed(0) }}%</span>
-              <span>置信度: {{ (mem.confidence * 100).toFixed(0) }}%</span>
               <span>{{ formatTime(mem.timestamp) }}</span>
             </div>
             <div class="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
@@ -204,4 +186,4 @@ function formatTime(timestamp: string): string {
       </div>
     </div>
   </div>
-</template>
+</template>emplate>

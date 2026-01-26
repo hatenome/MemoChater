@@ -693,9 +693,6 @@ pub struct ShortTermMemoryDto {
     pub content: String,
     /// 记忆类型
     pub memory_type: String,
-    pub relevance: f32,
-    /// 置信度 0.0 - 1.0（预留字段）
-    pub confidence: f32,
     /// 是否需要展开（前端控制）
     #[serde(default)]
     pub should_expand: bool,
@@ -732,8 +729,6 @@ impl From<&ShortTermMemory> for ShortTermMemoryDto {
             summary: mem.summary.clone(),
             content: mem.content.clone(),
             memory_type: mem.memory_type.clone(),
-            relevance: mem.relevance,
-            confidence: mem.confidence,
             should_expand: mem.should_expand,
             source: format!("{:?}", mem.source),
             timestamp: mem.timestamp.to_rfc3339(),
@@ -872,14 +867,12 @@ pub async fn update_short_term_memory(
     };
     
     // 更新短期记忆
-    packet.short_term_memory = req.short_term_memory.iter().map(|dto| {
+packet.short_term_memory = req.short_term_memory.iter().map(|dto| {
         ShortTermMemory {
             id: dto.id.clone(),
             summary: dto.summary.clone(),
             content: dto.content.clone(),
             memory_type: dto.memory_type.clone(),
-            relevance: dto.relevance,
-            confidence: dto.confidence,
             should_expand: dto.should_expand,
             source: parse_memory_source(&dto.source),
             timestamp: chrono::DateTime::parse_from_rfc3339(&dto.timestamp)

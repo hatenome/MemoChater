@@ -414,8 +414,6 @@ impl Processor for ContentChunker {
                 summary: chunk.summary.clone(),
                 content: chunk.content.clone(),
                 memory_type: chunk.chunk_type.clone(),
-                relevance: 1.0, // 新切块的相关性设为最高
-                confidence: 1.0, // 置信度默认1.0
                 should_expand: true, // 新切块默认展开
                 source: MemorySource::CurrentConversation,
                 timestamp: Utc::now(),

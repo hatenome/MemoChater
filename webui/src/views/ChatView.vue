@@ -39,6 +39,9 @@ const conversationMemory = ref<VectorMemoryEntry[]>([])
 const isConversationMemoryLoading = ref(false)
 const conversationMemorySearchResults = ref<{ memory: VectorMemoryEntry, score: number }[] | null>(null)
 
+// 对话记忆库面板引用
+const conversationMemoryPanelRef = ref<InstanceType<typeof ConversationMemoryPanel> | null>(null)
+
 // 编辑状态
 const editingThinkingIndex = ref<number | null>(null)
 const editingShortTermIndex = ref<number | null>(null)
@@ -386,6 +389,37 @@ async function handleConversationMemoryDelete(id: string) {
   }
 }
 
+// 重建对话向量库
+async function handleConversationMemoryRebuild() {
+  if (!store.currentAssistantId || !store.currentTopicId) return
+  
+  // 设置重建状态
+  conversationMemoryPanelRef.value?.setRebuilding(true)
+  conversationMemoryPanelRef.value?.setRebuildResult(null)
+  
+  try {
+    const result = await assistantsApi.rebuildConversationMemory(
+      store.currentAssistantId,
+      store.currentTopicId
+    )
+    
+    conversationMemoryPanelRef.value?.setRebuildResult({
+      rebuilt: result.rebuilt,
+      total: result.total
+    })
+    
+    app.showToast(`重建完成: ${result.rebuilt}/${result.total} 条`, 'success')
+    
+    // 刷新列表
+    await loadConversationMemory()
+  } catch (e) {
+    console.error('重建对话向量库失败:', e)
+    app.showToast('重建失败', 'error')
+  } finally {
+    conversationMemoryPanelRef.value?.setRebuilding(false)
+  }
+}
+
 async function sendMessage(content: string) {
   if (!store.currentAssistantConfig || !store.currentTopicId) {
     app.showToast('请先选择助手和话题', 'error')
@@ -697,6 +731,7 @@ async function handleRegenerate(index: number) {
         
         <!-- 对话记忆库面板 -->
         <ConversationMemoryPanel
+          ref="conversationMemoryPanelRef"
           v-show="activeTab === 'conversationMemory'"
           :entries="conversationMemory"
           :is-loading="isConversationMemoryLoading"
@@ -706,6 +741,7 @@ async function handleRegenerate(index: number) {
           @edit="handleConversationMemoryEdit"
           @delete="handleConversationMemoryDelete"
           @refresh="loadConversationMemory"
+          @rebuild="handleConversationMemoryRebuild"
         />
       </MemoryPanel>
     </div>

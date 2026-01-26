@@ -11,10 +11,15 @@ const props = defineProps<{
 const emit = defineEmits<{
   search: [query: string]
   clearSearch: []
-  edit: [id: string, data: { summary?: string, content?: string, memory_type?: string }]
+  edit: [id: string, data: { summary?: string, content?: string, memory_type?: string, confidence?: number, source?: string }]
   delete: [id: string]
   refresh: []
+  rebuild: []
 }>()
+
+// 重建状态
+const isRebuilding = ref(false)
+const rebuildResult = ref<{ rebuilt: number, total: number } | null>(null)
 
 // 搜索状态
 const searchQuery = ref('')
@@ -25,6 +30,19 @@ const editingId = ref<string | null>(null)
 const editSummary = ref('')
 const editContent = ref('')
 const editType = ref('')
+const editConfidence = ref(1.0)
+const editSource = ref('CurrentConversation')
+
+// 来源中文映射
+const sourceLabels: Record<string, string> = {
+  'CurrentConversation': '当前对话',
+  'LongTermRetrieval': '长期记忆',
+  'ToolResult': '工具结果'
+}
+
+function getSourceLabel(source: string): string {
+  return sourceLabels[source] || source
+}
 
 // 排序方式
 const sortBy = ref<'time' | 'type'>('time')
@@ -66,6 +84,8 @@ function startEdit(entry: VectorMemoryEntry) {
   editSummary.value = entry.summary
   editContent.value = entry.content
   editType.value = entry.memory_type
+  editConfidence.value = entry.confidence ?? 1.0
+  editSource.value = entry.source || 'CurrentConversation'
 }
 
 function saveEdit() {
@@ -73,7 +93,9 @@ function saveEdit() {
     emit('edit', editingId.value, {
       summary: editSummary.value,
       content: editContent.value,
-      memory_type: editType.value
+      memory_type: editType.value,
+      confidence: editConfidence.value,
+      source: editSource.value
     })
     editingId.value = null
   }
@@ -105,6 +127,12 @@ function truncateText(text: string, maxLength = 80): string {
 // 监听搜索结果变化
 watch(() => props.searchResults, () => {
   isSearching.value = false
+})
+
+// 暴露给父组件
+defineExpose({
+  setRebuilding: (value: boolean) => { isRebuilding.value = value },
+  setRebuildResult: (result: { rebuilt: number, total: number } | null) => { rebuildResult.value = result }
 })
 </script>
 
@@ -150,6 +178,14 @@ watch(() => props.searchResults, () => {
           >
             🔄
           </button>
+          <button
+            @click="emit('rebuild')"
+            :disabled="isRebuilding"
+            class="px-1.5 py-0.5 bg-amber-600/20 hover:bg-amber-600/40 text-amber-400 rounded disabled:opacity-50"
+            title="重建向量库"
+          >
+            {{ isRebuilding ? '重建中...' : '🔨 重建' }}
+          </button>
           <select
             v-model="sortBy"
             class="bg-dark-700 border border-dark-600 rounded px-1 py-0.5 text-xs"
@@ -158,6 +194,15 @@ watch(() => props.searchResults, () => {
             <option value="type">按类型</option>
           </select>
         </div>
+      </div>
+      
+      <!-- 重建结果提示 -->
+      <div 
+        v-if="rebuildResult"
+        class="mt-2 px-2 py-1 bg-green-600/20 text-green-400 rounded text-xs flex items-center justify-between"
+      >
+        <span>✅ 重建完成: {{ rebuildResult.rebuilt }}/{{ rebuildResult.total }} 条</span>
+        <button @click="rebuildResult = null" class="hover:text-green-200">×</button>
       </div>
     </div>
     
@@ -202,6 +247,30 @@ watch(() => props.searchResults, () => {
             @keydown.ctrl.enter="saveEdit"
             @keydown.escape="cancelEdit"
           ></textarea>
+          <div class="flex gap-2">
+            <div class="flex-1">
+              <label class="text-xs text-dark-400 mb-1 block">置信度 (0-1)</label>
+              <input
+                v-model.number="editConfidence"
+                type="number"
+                min="0"
+                max="1"
+                step="0.1"
+                class="w-full bg-dark-700 border border-dark-600 rounded px-2 py-1 text-sm"
+              />
+            </div>
+            <div class="flex-1">
+              <label class="text-xs text-dark-400 mb-1 block">来源</label>
+              <select
+                v-model="editSource"
+                class="w-full bg-dark-700 border border-dark-600 rounded px-2 py-1 text-sm"
+              >
+                <option value="CurrentConversation">当前对话</option>
+                <option value="LongTermRetrieval">长期记忆</option>
+                <option value="ToolResult">工具结果</option>
+              </select>
+            </div>
+          </div>
           <div class="flex justify-end gap-2">
             <button 
               @click="cancelEdit"
@@ -232,12 +301,15 @@ watch(() => props.searchResults, () => {
               {{ ((entry as any).score * 100).toFixed(0) }}%
             </span>
           </div>
-          <p class="text-dark-400 text-xs whitespace-pre-wrap mb-2">{{ truncateText(entry.content) }}</p>
+          <p class="text-dark-400 text-xs whitespace-pre-wrap mb-1">{{ truncateText(entry.content) }}</p>
+          <div class="text-xs text-dark-500 mb-1">
+            来源: <span class="text-dark-400">{{ getSourceLabel(entry.source) }}</span>
+          </div>
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2 text-xs text-dark-500">
               <span>{{ formatTime(entry.timestamp) }}</span>
               <span class="text-dark-600">|</span>
-              <span>{{ entry.source }}</span>
+              <span>置信度: {{ ((entry.confidence ?? 1) * 100).toFixed(0) }}%</span>
             </div>
             <div class="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
               <button 

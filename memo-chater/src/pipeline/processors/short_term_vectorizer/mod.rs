@@ -28,7 +28,10 @@ pub struct VectorizedMemory {
     pub timestamp: String,
     pub should_expand: bool,
     pub confidence: f32,
-    pub embedding: Vec<f32>,
+    /// summary 的向量 (权重 0.4)
+    pub summary_embedding: Vec<f32>,
+    /// content 的向量 (权重 0.6)
+    pub content_embedding: Vec<f32>,
 }
 
 /// 短期记忆向量文件结构
@@ -121,18 +124,27 @@ impl ShortTermVectorizer {
         }
     }
 
-    /// 为记忆生成向量
+    /// 为记忆生成向量（summary + content 双向量）
     async fn vectorize_memory(
         &self,
         memory: &ShortTermMemory,
         ctx: &ProcessorContext,
     ) -> Result<VectorizedMemory, ProcessorError> {
-        // 使用summary生成embedding
-        let embedding = ctx
+        let model = ctx.embedding_model();
+        
+        // 生成 summary embedding
+        let summary_embedding = ctx
             .ai_client
-            .embedding_with_model(&memory.summary, Some(ctx.embedding_model()))
+            .embedding_with_model(&memory.summary, Some(model))
             .await
-            .map_err(|e| ProcessorError::AiError(format!("生成embedding失败: {}", e)))?;
+            .map_err(|e| ProcessorError::AiError(format!("生成summary embedding失败: {}", e)))?;
+
+        // 生成 content embedding
+        let content_embedding = ctx
+            .ai_client
+            .embedding_with_model(&memory.content, Some(model))
+            .await
+            .map_err(|e| ProcessorError::AiError(format!("生成content embedding失败: {}", e)))?;
 
         Ok(VectorizedMemory {
             id: memory.id.clone(),
@@ -142,8 +154,9 @@ impl ShortTermVectorizer {
             source: Self::memory_source_to_string(memory),
             timestamp: memory.timestamp.to_rfc3339(),
             should_expand: memory.should_expand,
-            confidence: memory.confidence,
-            embedding,
+            confidence: 1.0, // 新记忆默认置信度 1.0
+            summary_embedding,
+            content_embedding,
         })
     }
 }
@@ -208,7 +221,7 @@ impl Processor for ShortTermVectorizer {
                 Ok(vectorized) => {
                     // 更新维度信息（首次）
                     if vector_file.metadata.dimension == 0 {
-                        vector_file.metadata.dimension = vectorized.embedding.len();
+                        vector_file.metadata.dimension = vectorized.summary_embedding.len();
                     }
 
                     if is_new {

@@ -28,11 +28,6 @@ pub struct ShortTermMemory {
     pub content: String,
     /// 记忆类型（如 fact/event/preference/knowledge/task/other）
     pub memory_type: String,
-    /// 相关性分数 0.0 - 1.0
-    pub relevance: f32,
-    /// 置信度 0.0 - 1.0（预留字段，默认1.0）
-    #[serde(default = "default_confidence")]
-    pub confidence: f32,
     /// 是否需要展开（前端控制）
     #[serde(default)]
     pub should_expand: bool,
@@ -40,10 +35,6 @@ pub struct ShortTermMemory {
     pub source: MemorySource,
     /// 创建时间
     pub timestamp: DateTime<Utc>,
-}
-
-fn default_confidence() -> f32 {
-    1.0
 }
 
 /// 记忆来源

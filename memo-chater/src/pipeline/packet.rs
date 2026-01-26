@@ -221,20 +221,11 @@ impl ConversationPacket {
         &self.short_term_memory
     }
 
-    /// 按相关性排序获取短期记忆
+/// 按时间排序获取短期记忆（最新的在前）
     pub fn get_short_term_memory_sorted(&self) -> Vec<&ShortTermMemory> {
         let mut sorted: Vec<_> = self.short_term_memory.iter().collect();
-        sorted.sort_by(|a, b| b.relevance.partial_cmp(&a.relevance).unwrap_or(std::cmp::Ordering::Equal));
+        sorted.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
         sorted
-    }
-
-    /// 衰减短期记忆（降低相关性分数）
-    pub fn decay_short_term_memory(&mut self, decay_factor: f32) {
-        for memory in &mut self.short_term_memory {
-            memory.relevance *= decay_factor;
-        }
-        // 移除相关性过低的记忆
-        self.short_term_memory.retain(|m| m.relevance > 0.1);
     }
 
     // ===== 处理器状态操作 =====

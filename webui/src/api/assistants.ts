@@ -87,4 +87,11 @@ export const assistantsApi = {
   /** 删除对话记忆 */
   deleteConversationMemory: (assistantId: string, topicId: string, memoryId: string) =>
     api.delete<void>(`/assistants/${assistantId}/topics/${topicId}/conversation-memory/${memoryId}`),
+
+  /** 重建对话向量库 */
+  rebuildConversationMemory: (assistantId: string, topicId: string) =>
+    api.post<{ success: boolean, rebuilt: number, total: number, embedding_model: string }>(
+      `/assistants/${assistantId}/topics/${topicId}/conversation-memory/rebuild`,
+      {}
+    ),
 }
