@@ -12,6 +12,8 @@ mod extractor;
 mod admin_api;
 mod assistant;
 mod assistant_api;
+mod graph;
+mod graph_api;
 
 use axum::{routing::post, Router};
 use std::sync::Arc;
@@ -27,6 +29,7 @@ use crate::qdrant::QdrantManager;
 use crate::state::AppState;
 use crate::assistant::AssistantManager;
 use crate::assistant_api::{assistant_routes, AssistantApiState};
+use crate::graph_api::graph_routes;
 
 #[tokio::main]
 async fn main() {
@@ -156,6 +159,9 @@ async fn main() {
     // 路由 - 助手API使用独立状态
     let assistant_router = assistant_routes(assistant_state);
     
+    // 图API路由
+    let graph_router = graph_routes().with_state(state.clone());
+    
     // 主应用路由
     let main_router = Router::new()
         // OpenAI 兼容 API
@@ -196,6 +202,7 @@ async fn main() {
     let app = Router::new()
         .merge(main_router)
         .merge(assistant_router)
+        .merge(graph_router)
         .layer(cors);
 
     // 启动服务

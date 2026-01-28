@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAssistantStore, useAppStore } from '@/stores'
 import { chatApi, assistantsApi } from '@/api'
 import ChatMessage from '@/components/ChatMessage.vue'
@@ -15,6 +15,7 @@ import { parseVCPContent, hasVCPBlocks } from '@/utils/vcpParser'
 import type { ThinkingEntry, ShortTermMemoryEntry, ConversationTurn, VectorMemoryEntry } from '@/types'
 
 const route = useRoute()
+const router = useRouter()
 const store = useAssistantStore()
 const app = useAppStore()
 
@@ -615,6 +616,14 @@ async function handleRegenerate(index: number) {
             title="查看上次请求"
           >
             📋 请求体
+          </button>
+          <button
+            v-if="store.currentAssistantId && store.currentTopicId"
+            @click="router.push(`/graph/${store.currentAssistantId}/${store.currentTopicId}`)"
+            class="text-xs px-2 py-1 bg-dark-700 hover:bg-dark-600 rounded text-dark-400 hover:text-dark-200 transition-colors"
+            title="查看对话关系图"
+          >
+            🔗 关系图
           </button>
           <div v-if="store.currentAssistantConfig" class="text-sm text-dark-500">
             模型: {{ store.currentAssistantConfig.model.main_model }}

@@ -23,11 +23,15 @@ const router = createRouter({
       component: () => import('./views/ChatView.vue')
     },
     {
+      path: '/graph/:assistantId/:topicId',
+      name: 'topic-graph',
+      component: () => import('./views/GraphView.vue')
+    },
+    {
       path: '/assistants',
       name: 'assistants',
       component: () => import('./views/AssistantsView.vue')
     },
-    
     {
       path: '/memory/:assistantId',
       name: 'memory',

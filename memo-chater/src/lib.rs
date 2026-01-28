@@ -16,3 +16,4 @@ pub mod state;
 pub mod admin_api;
 pub mod assistant;
 pub mod assistant_api;
+pub mod graph;
