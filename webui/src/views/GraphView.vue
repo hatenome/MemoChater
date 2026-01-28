@@ -79,56 +79,77 @@ async function loadGraphData() {
 }
 
 function initializeNodePositions() {
-  if (!graphData.value || !containerRef.value) return
+  if (!graphData.value || graphData.value.nodes.length === 0) return
   
-  // 使用容器尺寸而不是 canvas 尺寸（canvas 可能还没初始化）
-  const width = containerRef.value.clientWidth || 800
-  const height = containerRef.value.clientHeight || 600
-  const centerX = width / 2
-  const centerY = height / 2
-  const radius = Math.min(width, height) / 3
+  const width = 800
+  const height = 600
+  const centerX = 400
+  const centerY = 300
+  const radius = 200
+  const nodeCount = graphData.value.nodes.length
   
   nodePositions.value.clear()
   graphData.value.nodes.forEach((node, index) => {
-    const angle = (2 * Math.PI * index) / graphData.value!.nodes.length
-    nodePositions.value.set(node.id, {
-      x: centerX + radius * Math.cos(angle) + (Math.random() - 0.5) * 50,
-      y: centerY + radius * Math.sin(angle) + (Math.random() - 0.5) * 50,
-      vx: 0, vy: 0
-    })
+    const angle = (2 * Math.PI * index) / nodeCount
+    const x = centerX + radius * Math.cos(angle)
+    const y = centerY + radius * Math.sin(angle)
+    nodePositions.value.set(node.id, { x, y, vx: 0, vy: 0 })
   })
 }
 
 function runForceLayout() {
-  if (!graphData.value) return
+  if (!graphData.value || nodePositions.value.size === 0) return
+  
   for (let i = 0; i < 100; i++) {
+    // 斥力：节点之间互相排斥
     graphData.value.nodes.forEach((node1) => {
-      const pos1 = nodePositions.value.get(node1.id)!
+      const pos1 = nodePositions.value.get(node1.id)
+      if (!pos1 || isNaN(pos1.x)) return
+      
       graphData.value!.nodes.forEach((node2) => {
         if (node1.id === node2.id) return
-        const pos2 = nodePositions.value.get(node2.id)!
-        const dx = pos1.x - pos2.x, dy = pos1.y - pos2.y
-        const dist = Math.sqrt(dx * dx + dy * dy) || 1
-        const force = 5000 / (dist * dist)
+        const pos2 = nodePositions.value.get(node2.id)
+        if (!pos2 || isNaN(pos2.x)) return
+        
+        const dx = pos1.x - pos2.x
+        const dy = pos1.y - pos2.y
+        const dist = Math.max(Math.sqrt(dx * dx + dy * dy), 50) // 最小距离50，避免除以0
+        const force = Math.min(5000 / (dist * dist), 10) // 限制最大力
+        
         pos1.vx += (dx / dist) * force
         pos1.vy += (dy / dist) * force
       })
     })
+    
+    // 引力：连接的节点互相吸引
     graphData.value.edges.forEach((edge) => {
       const pos1 = nodePositions.value.get(edge.source)
       const pos2 = nodePositions.value.get(edge.target)
-      if (!pos1 || !pos2) return
-      const dx = pos2.x - pos1.x, dy = pos2.y - pos1.y
-      const force = Math.sqrt(dx * dx + dy * dy) * 0.01
-      pos1.vx += dx * force; pos1.vy += dy * force
-      pos2.vx -= dx * force; pos2.vy -= dy * force
+      if (!pos1 || !pos2 || isNaN(pos1.x) || isNaN(pos2.x)) return
+      
+      const dx = pos2.x - pos1.x
+      const dy = pos2.y - pos1.y
+      const dist = Math.sqrt(dx * dx + dy * dy)
+      const force = dist * 0.005 // 减小引力
+      
+      pos1.vx += dx * force
+      pos1.vy += dy * force
+      pos2.vx -= dx * force
+      pos2.vy -= dy * force
     })
+    
+    // 更新位置
     graphData.value.nodes.forEach((node) => {
-      const pos = nodePositions.value.get(node.id)!
-      pos.x += pos.vx; pos.y += pos.vy
-      pos.vx *= 0.9; pos.vy *= 0.9
+      const pos = nodePositions.value.get(node.id)
+      if (!pos || isNaN(pos.vx)) return
+      
+      pos.x += pos.vx
+      pos.y += pos.vy
+      pos.vx *= 0.85 // 阻尼
+      pos.vy *= 0.85
     })
   }
+  
   centerGraph()
   draw()
 }
